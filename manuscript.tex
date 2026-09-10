@@ -1,0 +1,434 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{booktabs}
+\usepackage{mathpazo}
+\usepackage[round]{natbib}
+\usepackage[colorlinks=true, allcolors=black]{hyperref}
+\usepackage{microtype}
+\usepackage{stmaryrd}
+
+\newcommand{\B}{\mathbb{B}}   % bearers (blackboard bold, matching Hlobil; distinct from B, blank nodes)
+\newcommand{\I}{\mathbb{I}}
+\newcommand{\imp}{\mathrel{\mid\!\sim}}
+\newcommand{\nimp}{\mathrel{\mid\!\not\sim}}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{claim}{Claim}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{convention}{Convention}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+\newcommand{\tuple}[1]{\langle #1 \rangle}
+\newcommand{\Lrdf}{\mathcal{L}^{\mathsf{RDF}}}  % the RDF object language
+\newcommand{\Sp}{\mathbb{S}}    % implication space (Hlobil)
+\newcommand{\Pbb}{\mathbb{P}}   % n-ary properties (Hlobil)
+\newcommand{\Obb}{\mathbb{O}}   % objects / object sequences (Hlobil)
+\newcommand{\sem}[1]{\llbracket #1 \rrbracket}  % semantic brackets
+\newcommand{\bmap}{\mathfrak{B}}  % bearer map: triples (elementwise, graphs) to bearers
+\newcommand{\RSR}{\mathrm{RSR}}   % range of subjunctive robustness (Hlobil)
+\newcommand{\role}{\mathcal{R}}   % implicational role (Hlobil)
+\newcommand{\Cbb}{\mathbb{C}}     % conceptual contents (Hlobil)
+\newcommand{\Mcal}{\mathcal{M}}   % implication-space model (Hlobil)
+\newcommand{\mimp}[1]{\mathrel{\overset{#1}{\mid\!\sim}}}  % implication in m-models
+\newcommand{\Bcal}{\mathcal{B}}   % base (RLLR Ch. 5; distinct from B, blank nodes, and \bmap, bearer map)
+\newcommand{\cl}{\mathrm{cl}}   % closure
+
+\title{Implication-Space Semantics for RDF}
+\author{Bradley P. Allen\\
+  University of Amsterdam\\
+  \texttt{b.p.allen@uva.nl}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The Semantic Web is a deployed inferential practice: hundreds of communities publish, in the formal language of RDF, both the claims they endorse and the schema triples that license inference among them. Its official semantics has nonetheless been model-theoretic throughout its history; this note gives it an inferentialist one. We give RDF an implication-space semantics in the sense of Hlobil and Brandom, encoding triples as bearers of a single ternary property over generalized RDF, and prove two recovery results. First, for any base over RDF triples, implication in the models fit for the base is exactly the base lifted through a substitutional clause for blank nodes; the semantics adds nothing to the practice that supplies the base. 
+Second, for every entailment regime presented by closure under Horn rules, including rules concluding false, the base the regime specifies is recovered exactly: simple RDF entailment, RDFS entailment, and OWL 2 RL are instances, and a graph is incoherent in the semantics exactly when the regime's rules derive false. The frames the regimes induce come out monotone, closed under Cut, and explosive, so that the substructural machinery of implication-space semantics is idle on them. That idleness is not a limitation of the semantics. It locates what the regimes leave out: the domain knowledge, as well as the constraints and query-side practices through which communities actually handle defeat, about which classical RDF semantics is silent.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+The Semantic Web \citep{bernerslee2001semantic} is the result of hundreds of communities of experts recording their discursive practice in a standard formal language. That formal language is the Resource Description Framework (RDF) \citep{cyganiak2014rdf,hayes2014rdf}, an existential/conjunctive fragment of first-order logic \citep{terhorst2005completeness}. Over the last twenty-five years, tens of billions of RDF statements have been openly published on the Semantic Web \citep{fernandez2017lodalot,meusel2014webdatacommons}. These statements range over a broad set of Web resources, from Web site annotations used to improve Web search \citep{guha2016schema}, to general-purpose collaborative knowledge graphs \citep{vrandecic2014wikidata}, to knowledge graphs used in biomedical research \citep{nicholson2020constructing} and cultural heritage studies \citep{zhu2026knowledge}.
+
+Reasoning procedures for use with RDF have typically been based on those developed for reasoning with description logics \citep{baader2007description} or Horn rule languages \citep{munoz2009simple,motik2014parallel,nenov2015rdfox}, fragments of classical monotonic first-order logic designed to achieve a useful tradeoff between expressivity and tractability \citep{levesque1987expressiveness}. However, Semantic Web practitioners have labored under the absence of support in RDF for negation and defeasibility. RDF explicitly omits classical negation \citep{hayes2014rdf}, and current practice uses features of the SPARQL query language \citep{harris2013sparql} (e.g., \texttt{NOT EXISTS} and \texttt{MINUS}) to work around that omission. Approaches to defeasible inference in RDF have been proposed \citep{bassiliades2004drdevice,antoniou2007drprolog}, but they are largely unadopted in current practice, which uses knowledge engineering workarounds \citep{rector2004defaults,hoehndorf2007representing} instead. 
+\citet{hitzler2010reasonable} argue that ``[a]lthough the primary definition of the semantics of formal languages is most often in terms of a denotational semantics, [\ldots] perhaps a more productive definition on the Semantic Web is to describe semantic interoperability in terms of shared inferences'', and explicitly call for a ``semantics for `shared inference'{}'', able to handle issues of negation and default reasoning.
+
+In this note we take a first step towards answering that call. Not by deriving inference from a denotationally defined entailment relation, but by taking as given the inferences a community of practice has chosen to share, a published graph together with a schema vocabulary and entailment regime it adopts, and defining entailment from those. We prove that implication-space semantics \citep{hlobil2025reasons} reproduces exactly whatever base is supplied over RDF triples, blank nodes included, and that for the bases the deployed entailment regimes specify, the relation reproduced is the regime's own: simple RDF entailment, the minimal entailment relation on RDF graphs and the one that every regime in use extends; RDFS entailment; and the rule-defined fragment of OWL 2 RL, inconsistency included. To our knowledge, this is the first semantics for RDF of this kind.
+
+Section~\ref{sec:nutshell} presents a short overview of RDF, to provide the background for the discussion in Section~\ref{sec:setting} of how implication-space semantics applies to it. We conclude in Section~\ref{sec:discussion} with questions around work towards a larger objective: investigating how the Semantic Web can be understood as a form of logical expressivism~\citep{brandom1994making,brandom2000articulating} in the wild, and then applying that understanding towards making a better Semantic Web.
+
+\section{RDF for logical expressivists}
+\label{sec:nutshell}
+
+The RDF language is defined in a series of W3C Recommendations and Candidate Recommendations. In the discussion that follows, we will be assuming RDF 1.1 \citep{cyganiak2014rdf,hayes2014rdf}. RDF 1.2 \citep{hartig2026rdf,patelschneider2026rdf}, a Candidate Recommendation as of this writing, adds triple terms, a new mechanism for reification that we plan to take advantage of in future work; we expect the results here to apply to RDF 1.2 unchanged.
+
+We work throughout with \emph{generalized} RDF \citep[\S 7]{cyganiak2014rdf}, in which IRIs, blank nodes and literals may occur in any position of a triple, rather than under the positional restrictions of the standard syntax. Three facts license this. The semantics of RDF is stated by \citet{hayes2014rdf} to apply to generalized RDF ``without change'', so that interpretation, satisfiability and entailment are the same notions on both; the completeness of the RDF and RDFS entailment rules is stated there for the generalized closure, and fails under the standard syntax; and the OWL 2 RL/RDF rules of \citet{motik2012owl} are already defined over a ternary predicate $T(s,p,o)$ that the Recommendation introduces as a generalization of RDF triples in which blank nodes and literals are allowed in all positions. SPARQL triple patterns \citep{harris2013sparql} likewise admit variables in every position. Deployed practice publishes standard graphs, and every result below concerning deployed practice is a result about standard graphs by restriction (Lemma~\ref{lem:conservative}); the generalization is used only in the semantics and in the closure arguments. We now proceed to define the key elements of RDF that we will need in Section~\ref{sec:setting}.
+
+\begin{definition}[RDF triple]
+\label{def:rdftriple}
+Following \citet{angles2020mapping}, let \( I \) be an infinite set of \textit{IRIs} (Internationalized Resource Identifiers \citealp{durst2005internationalized}), \( B \) be an infinite set of \textit{blank nodes} \citep{hogan2014everything}, and \( L \) an infinite set of \textit{literals} \citep{beek2018literally}, pairwise disjoint. We call the elements of $I \cup L$ \textit{names}. An \textit{RDF triple} is a 3-tuple $(s, p, o) \in (I \cup B \cup L)^{3}$; we call $s$ the \textit{subject}, $p$ the \textit{property}, and $o$ the \textit{object} of the triple. A triple is \textit{standard} iff $s \in I \cup B$, $p \in I$, and $o \in I \cup B \cup L$, which is the syntax of \citet{cyganiak2014rdf}; a triple in general is a generalized RDF triple in the sense of \S 7 of that Recommendation. We write $\Lrdf$ for the set of RDF triples.
+\end{definition}
+
+\begin{remark}
+\label{rem:subsentential}
+IRIs are identifiers that adhere to a standard syntax which allows them to be treated as dereferenceable in the context of an Internet protocol. URLs (Uniform Resource Locators \citep{bernerslee2005uri}) are a type of IRI, familiar to Web users as the way in which Web-accessible content and services can be addressed. The occurrence of human-readable names within an IRI is only meant to provide usability support: their presence carries no semantic import for our purposes, although there has been work on understanding the correlation between natural language terms and RDF graph structure \citep{derooij2016names}. IRIs are unsorted: an IRI functions as a constant or as a predicate solely according to the position in which it occurs, and one IRI may occur in different positions in different triples, as \texttt{rdf:type} does in (\texttt{rdf:type}, \texttt{rdf:type}, \texttt{rdf:Property}) and \texttt{ex:Bird} may in (\texttt{ex:tweety}, \texttt{rdf:type}, \texttt{ex:Bird}) and (\texttt{ex:Bird}, \texttt{rdfs:subClassOf}, \texttt{ex:Animal}). The model theory of \citet{hayes2014rdf} reflects this by making the properties $IP$ a subset of the resources $IR$, with extensions supplied by the map $IEXT$: being a property is a role a resource plays, not a sort it belongs to. The encoding of Section~\ref{sec:setting} preserves this. A literal is a string that optionally contains structured annotation providing datatype information \citep{peterson2012xsd} to support its use in software applications. 
+\end{remark}
+
+\begin{remark}
+\label{rem:bnodes}
+Blank nodes are RDF's way of making statements about objects without naming them. They are the mechanism that allows existentially quantified statements to be expressed. In practice they are a convenience to make statements about how objects are related to objects with names without having to go through the work of minting a name and ensuring the consistent use of that name within a given graph or across graphs. Labels for blank nodes do not provide identity across multiple graphs; a blank node serves only to allow making statements about things without naming them.
+\end{remark}
+
+\begin{definition}[RDF graph]
+\label{def:rdfgraph}
+An \textit{RDF graph} is a finite set of RDF triples.\footnote{Finiteness is not part of the W3C definition~\citep{cyganiak2014rdf}, but every deployed graph and every complexity result for the entailment regimes assumes it \citep{terhorst2005completeness}; we make it explicit because the operations of Definition~\ref{def:roles} are stated finitarily in \citet[Defs.~67, 69]{hlobil2025reasons} and \citet[Def.~10]{hlobil2026firstorder}.} An \textit{instance mapping} is a map $\mu: B \rightarrow I \cup B \cup L$, extended to triples and graphs pointwise and acting as the identity on names; $\mu(G)$ is the \textit{instance} of $G$ under $\mu$. Since every element of $(I \cup B \cup L)^{3}$ is a triple, every instance of a graph is a graph. A triple or a graph is \textit{ground} iff it contains no blank nodes; a \textit{ground instance} of $G$ is an instance $\mu(G)$ in which $\mu$ sends every blank node of $G$ to a name. A graph is \textit{standard} iff each of its triples is standard. We write $\mathrm{bnodes}(G)$ for the set of blank nodes occurring in $G$, and $\mathrm{names}(G)$ for the names occurring in $G$.
+\end{definition}
+
+\begin{remark}
+\label{rem:graphreading}
+An RDF graph is read conjunctively. Asserting a graph asserts each of its triples jointly.
+\end{remark}
+
+\begin{definition}[Simple RDF entailment \citep{hayes2014rdf,terhorst2005completeness}]
+\label{def:simpleentailment}
+Let $G, G'$ be RDF graphs. $G$ \textit{simply entails} $G'$ if and only if some subgraph of $G$ is an instance of $G'$; i.e., iff there is an instance mapping $\mu$ with $\mu(G') \subseteq G$.
+\end{definition}
+
+\begin{remark}
+\label{rem:interpolation}
+\citet[\S 5.3, App.~C]{hayes2014rdf} define simple RDF entailment model-theoretically, and the Interpolation Lemma stated in that W3C Recommendation certifies that the characterization in Definition~\ref{def:simpleentailment} is extensionally equivalent on standard graphs. \citet[Lemma~2.8]{terhorst2005completeness} proves the lemma for graphs with blank nodes in predicate position, by a Herbrand interpretation that makes no use of the positional restrictions; the same proof covers the generalized syntax of Definition~\ref{def:rdftriple}, on which the model theory applies without change \citep{hayes2014rdf}.
+\end{remark}
+
+\begin{lemma}[Conservativity]
+\label{lem:conservative}
+For standard graphs $G$ and $G'$, $G$ simply entails $G'$ in the sense of Definition~\ref{def:simpleentailment} iff $G$ simply entails $G'$ in the sense of \citet{hayes2014rdf}.
+\end{lemma}
+
+\begin{proof}
+Under the standard syntax an instance of $G'$ is defined as a standard graph $\mu(G')$, so the Interpolation Lemma characterizes simple entailment between standard graphs as the existence of an instance mapping $\mu$ with $\mu(G') \subseteq G$ \emph{and} $\mu(G')$ standard. But $\mu(G') \subseteq G$ with $G$ standard makes $\mu(G')$ standard, so the second conjunct is redundant, and the two conditions coincide.
+\end{proof}
+
+\begin{definition}[Entailment regime]
+\label{def:entailmentregime}
+Let $V \subseteq I$ be a finite \textit{RDF vocabulary}. A \textit{rule} is a pair $\tuple{A,c}$ of a finite set $A$ of triples and a conclusion $c$ that is either a triple or the symbol $\bot$; a rule with $c = \bot$ is \textit{false-concluding}. An \textit{entailment regime over $V$} is a set $R$ of rules such that
+\begin{enumerate}
+\item (\textit{range restriction}) every element of $I \cup B \cup L$ occurring in $c$ occurs in $A$ or belongs to $V$ (vacuous when $c = \bot$); and
+\item (\textit{uniformity}) for every map $\rho: I \cup B \cup L \rightarrow I \cup B \cup L$ that fixes $L \cup V$ pointwise, extended to triples and graphs pointwise and to $\bot$ by $\rho(\bot) = \bot$: if $\tuple{A,c} \in R$ then $\tuple{\rho(A), \rho(c)} \in R$.
+\end{enumerate}
+The \textit{closure} $\cl_R(X)$ of a set $X$ of triples is the least $Y \subseteq \Lrdf \cup \{\bot\}$ with $Y \supseteq X$ such that $c \in Y$ whenever $\tuple{A,c} \in R$ and $A \subseteq Y$. $X$ is \textit{$R$-inconsistent} iff $\bot \in \cl_R(X)$. $G$ \textit{$R$-entails} $H$ iff $G$ is $R$-inconsistent or $\cl_R(G) \setminus \{\bot\}$ simply entails $H$. The empty regime $R = \emptyset$ has $\cl_{\emptyset}(X) = X$, so $\emptyset$-entailment is simple entailment.
+\end{definition}
+
+\begin{remark}
+\label{rem:regimeschemas}
+Definition~\ref{def:entailmentregime} defines regimes extensionally. In practice, $R$ is the set of instances of finitely many rule schemas under uniform substitution of elements of $I \cup B \cup L$ for metavariables, which makes membership in $R$ decidable and makes uniformity automatic, provided the side conditions attached to metavariables are of the forms ``is a literal'' (or any condition on a literal, such as being ill-typed for its datatype, as in rule dt-not-type of \citet{motik2012owl}) or ``is a given element of $V$'', both of which the maps $\rho$ of clause (2) preserve. A condition of the form ``is not a literal'', which the standard-syntax formulations of the rules carry in order to keep literals out of subject and predicate position in conclusions \citep{terhorst2005completeness}, is not preserved by the maps of clause (2) and is excluded; under the generalized syntax no pattern needs it. The RDFS patterns rdfs2--rdfs13 of \citet[\S 9.2.1]{hayes2014rdf} carry no side conditions; rdfs1 conditions on an IRI being a recognized datatype, a membership condition on a finite set that we include in $V$; and rdfD1 conditions on a literal. The RDF and RDFS entailment patterns of \citet[\S 9.2]{hayes2014rdf} (with the axiomatic triples read as rules with empty premise set), the $\rho$df rules of \citet{munoz2009simple}, and the OWL 2 RL/RDF rules of \citet{motik2012owl}, false-concluding rules included, are all of this form, and all are range-restricted. The relation ``$\cl_R(G)$ simply entails $H$'' is the form in which \citet{hayes2014rdf} state the completeness of the RDF and RDFS patterns over the generalized closure, and in which Theorem~10 of \citet{munoz2009simple} states the normal form of $\rho$df proofs; ``$G$ is $R$-inconsistent'' is the form in which \citet{motik2012owl} state that the OWL 2 RL/RDF rules detect inconsistency, namely by deriving \emph{false}.
+
+One class of rule that appears in the literature falls outside Definition~\ref{def:entailmentregime}. Rules that allocate a fresh blank node in their conclusion, such as rule rdfD1 of \citet{hayes2014rdf} and the literal-generalization rules of \citet{terhorst2005completeness}, exist only to keep literals out of subject position under the standard syntax; over the generalized syntax they are replaced by rule GrdfD1, which allocates nothing, and closure under any regime of Definition~\ref{def:entailmentregime} introduces no blank nodes at all, by range restriction. False-concluding rules, such as the disjointness rules of OWL 2 RL (Remark~\ref{rem:identity}), are inside the format: in the terms of Section~\ref{sec:setting} they declare sets of bearers incoherent, pairs with empty succedent, and Proposition~\ref{prop:incoherence} shows that the semantics recovers them.
+\end{remark}
+
+\begin{remark}
+\label{rem:identity}
+RDF itself does not provide identity, but in practice identity is asserted between named objects through triples with \texttt{owl:sameAs} in the property position. Intriguingly, Brandom's account of singular terms in \citet[Ch. 6]{brandom1994making} treats identity locutions as making explicit symmetric substitution commitments, which is exactly the role \texttt{owl:sameAs} plays. The deployed rule presentation confirms this: the OWL 2 RL/RDF rules for \texttt{owl:sameAs} are exactly reflexivity, symmetry, transitivity, and replacement in each triple position (rules eq-ref, eq-sym, eq-trans, and eq-rep-s/p/o in \citet{motik2012owl}), so that, materialized per Definition~\ref{def:entailmentregime}, the \texttt{owl:sameAs} fragment of the regime is a set of symmetric substitution licenses over first-order bearers. 
+% RDF and RDFS can assert identity but cannot deny it. 
+OWL 2 RL's rules concluding \emph{false} (eq-diff1 for \texttt{owl:sameAs} against \texttt{owl:differentFrom}, and likewise cax-dw, prp-irp, prp-asyp, and cls-com for disjointness, irreflexivity, asymmetry, and complementation \citep{motik2012owl}) are published incompatibilities, pairs with empty succedent that Definition~\ref{def:entailmentregime} admits (Remark~\ref{rem:regimeschemas}). The use of \texttt{owl:sameAs} has been controversial \citep{halpin2010sameas,beek2018sameas}, and considered to be an easily abused feature; from a Brandomian perspective the documented abuse patterns look like asymmetric or context-bound substitution commitments forced through a symmetric explicitator. A more thorough discussion of \texttt{owl:sameAs} in the context of \citet{brandom1994making} and the treatment of identity left open in \citet{hlobil2026objects} is deferred to future work.
+\end{remark}
+
+\section{RDF in the implication-space setting}
+\label{sec:setting}
+
+We now show how RDF as defined in Section~\ref{sec:nutshell} can be provided an implication-space semantics, by establishing the relationship between triples and bearers, regimes and implication frames, and graphs and contents. This would be trivial were it not for blank nodes, which must be accounted for if the implication-space machinery is to compute RDF's actual entailment relations.
+
+We give RDF graphs contents in the sense of \citet{hlobil2025reasons}, and then show that the entailments those contents determine among themselves are the practice's own. By ``the practice's own'' we mean the entailment relation a community commits itself to by adopting an entailment regime, not a description of what its members or its reasoners happen to do. Recovery of a regime then means that, with the ground consequence relation the regime specifies taken as base (Definition~\ref{def:fitness}), the implications the fit models sanction between the contents of any two graphs are exactly those a compliant reasoner for the regime establishes by materializing the first graph and querying the result for the second (Theorem~\ref{thm:closure}). The frames the regimes induce come out structural in the sense of \citet[Def.~30]{hlobil2026firstorder}: they satisfy Containment, monotonicity in both coordinates, and Cut, and are therefore explosive. As a result, the substructural machinery of implication-space semantics is idle on them, though the bilateral machinery is not: the incoherent positions the regimes publish are recovered as such (Proposition~\ref{prop:incoherence}). The idleness of the substructural machinery is not a limitation of the semantics. It locates what the regimes leave out, namely, the domain knowledge, in addition to the constraints and query-side practices through which communities actually handle defeat, which we discuss briefly in Section~\ref{sec:discussion}.
+
+\subsection{Implication-space semantics}
+\label{sec:machinery}
+
+\begin{definition}[Bearers, implication space, implication frames {\citep{hlobil2026firstorder}}]
+\label{def:bearers}
+Let $\Pbb^{n}$ be a set of $n$-ary properties and $\Obb^{n}$ a set of sequences of $n$ objects. $\B$ is the set of $\tuple{P, \vec{o}}$, or $P\vec{o}$ for short, for all $P \in \Pbb^{n}$ and $\vec{o} \in \Obb^{n}$. An \textit{implication space} is $\Sp = \mathcal{P}(\B) \times \mathcal{P}(\B)$. An element of $\Sp$ is a candidate \textit{implication}; $\I \subseteq \Sp$ is the set of good implications, i.e., implications that are endorsed in a community's discursive practice. An \textit{implication frame} is $\tuple{\B, \I}$. We impose no condition on $\I$ in general; the frames of Definition~\ref{def:inducedframe} contain the canonical $\I_C$ of Definition~\ref{def:canonicalframe} and so satisfy Containment, and fitness for the bases of Definition~\ref{def:fitness} requires Containment on the bearers of ground triples. The \textit{substitution} $[o_j / o_k]P\vec{o}$ is like $P\vec{o}$ except that $o_k$ is replaced by $o_j$ everywhere in $\vec{o}$.
+\end{definition}
+
+\begin{definition}[Implicational roles and their operations {(\citealp[Ch.~5]{hlobil2025reasons})}]
+\label{def:roles}
+If $H \subseteq \Sp$, the \textit{range of subjunctive robustness} of $H$ is $\RSR(H) = \{\tuple{x, y} \mid \forall \tuple{\mathfrak{G}, \mathfrak{D}} \in H \, (\tuple{\mathfrak{G} \cup x,\, \mathfrak{D} \cup y} \in \I)\}$. The \textit{implicational role} of $H$ is $\role(H) = \{x \subseteq \Sp \mid \RSR(H) = \RSR(x)\}$; for $A \in \Sp$, $\role(A) = \role(\{A\})$; and for a bearer $a \in \B$, $\role(a) = \tuple{\role^{+}(a), \role^{-}(a)} = \tuple{\role\tuple{\{a\}, \emptyset},\, \role\tuple{\emptyset, \{a\}}}$. \textit{Adjunction}: $\role(H) \sqcup \role(J) = \role(\{\tuple{A \cup C, B \cup D} \mid \tuple{A, B} \in H,\, \tuple{C, D} \in J\})$. \textit{Symjunction}: $\role(H) \sqcap \role(J) = \role(H \cup J)$. \textit{Power-symjunction} (\citealp{hlobil2026firstorder}): $\nabla X = \bigsqcap\{\bigsqcup x \mid x \subseteq X,\, x \neq \emptyset\}$ for a set of roles $X$. \textit{Conceptual contents}, $\Cbb$, are pairs of roles. We say that a set $H \subseteq \Sp$ \textit{generates} the role $\role(H)$; the operations are defined on generating sets, and adjunction distributes over symjunction, since $H \sqcup (J \cup K) = (H \sqcup J) \cup (H \sqcup K)$ as sets of pairs.
+\end{definition}
+
+\begin{definition}[Content entailment and implication-space models {(\citealp[Ch.~5]{hlobil2025reasons}; \citealp{hlobil2026firstorder})}]
+\label{def:contententailment}
+For $\mathfrak{G} = \{g_0, \ldots, g_n\},\, \mathfrak{D} = \{d_0, \ldots, d_m\} \subseteq \Cbb$: $\mathfrak{G} \imp \mathfrak{D}$ iff $\bigcup \bigl( \bigsqcup_{i=0}^{n} g_i^{+} \sqcup \bigsqcup_{j=0}^{m} d_j^{-} \bigr) \subseteq \I$. An \textit{implication-space model} is $\Mcal = \tuple{\tuple{\B, \I}, \sem{\cdot}^{\Mcal}}$, with $\sem{\cdot}^{\Mcal}$ assigning contents to sentences; for an atomic sentence, $\sem{F a_1 \ldots a_i} =_{df.} \role(P\vec{o})$ for $P = \sem{F}$ and $\vec{o} = \tuple{\sem{a_1}, \ldots, \sem{a_i}}$. For a set $m$ of implication-space models: $\Gamma \mimp{m} \Delta$ iff, for all $\Mcal \in m$, $\sem{\Gamma}^{\Mcal} \imp \sem{\Delta}^{\Mcal}$.
+\end{definition}
+
+\begin{lemma}[Reduction]
+\label{lem:reduction}
+For all $F \subseteq \Sp$, $\bigcup\role(F) \subseteq \I$ iff $F \subseteq \I$.
+\end{lemma}
+
+\begin{proof}
+By Definition~\ref{def:roles}, $\tuple{\emptyset,\emptyset} \in \RSR(X)$ iff $X \subseteq \I$, for any $X \subseteq \Sp$. Since $\RSR$ of a union is the intersection of the $\RSR$s, $\RSR(\bigcup \role(F)) = \RSR(F)$, so $\bigcup \role(F) \in \role(F)$ \citep[cf.][Sec.~3.1]{hlobil2026firstorder}. \textit{If}: $F \subseteq \I$ gives $\tuple{\emptyset, \emptyset} \in \RSR(F) = \RSR(\bigcup \role(F))$, hence $\bigcup \role(F) \subseteq \I$. \textit{Only if}: $F \in \role(F)$, so $F \subseteq \bigcup \role(F) \subseteq \I$.
+\end{proof}
+
+Lemma~\ref{lem:reduction} generalizes the singleton case of \citet[Prop.~74]{hlobil2025reasons} to arbitrary $F$, and says that content entailment can be checked on any generating set: $\mathfrak{G} \imp \mathfrak{D}$ iff every pair of a set generating $\bigsqcup g_i^{+} \sqcup \bigsqcup d_j^{-}$ lies in $\I$. Since $\RSR$ is antitone and $X \subseteq \RSR(\RSR(X))$, $\RSR^3 = \RSR$, and $\bigcup \role(F) = \RSR(\RSR(F))$ is the maximum member of $\role(F)$; the lemma therefore reads $\RSR(\RSR(F)) \subseteq \I$ iff $F \subseteq \I$, with $\RSR \circ \RSR$ the induced closure. \citet[Prop.~102]{hlobil2025reasons} notes the fixed points of this closure without developing them.
+
+\begin{proposition}[Positional criterion {\citep[Prop.~12]{hlobil2026firstorder}}] \label{prop:positional}
+Let $\Gamma, \Delta \subseteq \B$, and let $\mathfrak{G} = \{\role(a) \mid a \in \Gamma\}$, $\mathfrak{D} = \{\role(b) \mid b \in \Delta\}$. Then $\mathfrak{G} \imp \mathfrak{D}$ iff $\tuple{\Gamma, \Delta} \in \I$.
+\end{proposition}
+
+Equivalently, this is Proposition 74 of \citet{hlobil2025reasons} with their Definition 72 unfolded: the model that assigns each bearer the role of its own bearer has $\sem{\Gamma} = \{\role(a) \mid a \in \Gamma\}$, so their homophonic self-interpretation result is exactly the criterion above.
+
+\begin{definition}[Canonical frame {(\citealp[Def.~34]{hlobil2026firstorder}; \citealp[assumption~(iii)]{hlobil2026objects}})]
+\label{def:canonicalframe}
+The \textit{canonical frame} is $\tuple{\B, \I_{C}}$, where $\I_{C} = \{\tuple{\Gamma, \Delta} \in \Sp \mid \Gamma \cap \Delta \neq \emptyset\}$.
+\end{definition}
+
+\begin{remark}
+\label{rem:canonicalframe}
+A canonical frame can be viewed as an implication frame for RDF with the reasoning ``off''; i.e., under a canonical frame, a graph implies exactly the triples it contains.
+\end{remark}
+
+\subsection{Contents of RDF graphs}
+\label{sec:contents}
+
+\begin{convention}[Finite vocabulary fragment]
+\label{conv:finiteness}
+Fix a finite $N \subseteq I \cup L$, the \textit{vocabulary fragment} over which the frame is built. Definitions~\ref{def:rdftriple} and~\ref{def:rdfgraph} leave $I$, $B$ and $L$ infinite; $N$ constrains only what the frame, its lexicon, and its models range over, and all three are accordingly $N$-relative. Since graphs are finite (Definition~\ref{def:rdfgraph}), the adjunction of Definition~\ref{def:graphcontents} is finite; and since the instance families below are indexed by maps from a graph's blank nodes into $N$, of which there are finitely many, so are the adjunction and power symjunction of Definition~\ref{def:existential}. Every operation used below is therefore finitary, as \citet[Defs.~67, 69]{hlobil2025reasons} and \citet[Def.~10]{hlobil2026firstorder} state them, and \citet[Props.~105, 106]{hlobil2025reasons} apply unchanged; contents are pairs of implicational roles (\citealp[Defs.~65--66]{hlobil2025reasons}).
+\end{convention}
+
+\begin{definition}[RDF triples as bearers]
+\label{def:triplebearers}
+Take $\Pbb^{3} = \{T\}$, a single ternary property, and let $\Obb$ be a set of objects with an interpretation $\sem{\cdot}: N \rightarrow \Obb$ of the names in $N$. A ground triple $t = (s, p, o)$ over $N$ denotes the bearer $\bmap(t) = T\tuple{\sem{s}, \sem{p}, \sem{o}}$; on a ground graph $G$, $\bmap(G) = \{\bmap(t) \mid t \in G\}$. The map $\bmap$ depends on the interpretation, and where a model $\Mcal$ is under discussion $\bmap$ is the bearer map determined by $\sem{\cdot}^{\Mcal}$.
+\end{definition}
+
+\begin{remark}
+\label{rem:bearermapping}
+This is the encoding of the OWL 2 RL/RDF rules \citep{motik2012owl}, and it is the encoding RDF's own model theory suggests: every position of a triple is an argument place, every name denotes one object whatever position it occupies, and there is no sort of properties distinct from the sort of objects. The familiar reading of a triple as a binary predication $\sem{p}\tuple{\sem{s}, \sem{o}}$ is recovered, not lost: for each $o \in \Obb$, $P_{o} = T\tuple{\cdot, o, \cdot}$ is a binary property indexed by an object, which is exactly $IEXT$ of \citet{hayes2014rdf} lifted to bearers, and $IP \subseteq IR$ reappears as the set of objects that occur in second position, a role rather than a sort. A sorted encoding, with $\sem{p} \in \Pbb^{2}$, would assign an IRI occurring in both positions two unconnected denotations, and could not read a blank node in property position at all. Note that the questions posed in \citet{hlobil2026objects} --- which bearers share their property, which share objects, and which objects occupy the same argument places --- are trivially recoverable from the triple syntax, as opposed to requiring a subsentential structure recovery procedure based on implicational symmetries; under the present encoding the syntax also fixes, as ground truth, that it is the second argument place that functions as a predicate, which a recovery procedure working from implicational symmetries alone would have to discover. RDF's minimalistic object language is a first-order syntax, which makes atomic bearers clearly identifiable.
+\end{remark}
+
+\begin{definition}[Content of a ground RDF graph]
+\label{def:graphcontents}
+The \textit{content} of a ground RDF graph $G$ is the pair of roles
+\[
+\sem{G} =_{df.} \Bigl\langle
+  \bigsqcup\bigl\{\role^{+}(\bmap(t)) \mid t \in G\bigr\},\
+  \nabla\bigl\{\role^{-}(\bmap(t)) \mid t \in G\bigr\}
+\Bigr\rangle,
+\]
+its positive role the adjunction of its triples' positive roles, its
+negative role the power symjunction of theirs. A graph is thereby read
+conjunctively (Remark~\ref{rem:graphreading}); in particular, the power
+symjunction is what makes a graph in succedent position the denial of its triples severally and in every joint combination. By Definition~\ref{def:roles}, $\sem{G}^{+}$ is generated by the single pair $\tuple{\bmap(G), \emptyset}$, and $\sem{G}^{-}$ by the pairs $\tuple{\emptyset, S}$ for $\emptyset \neq S \subseteq \bmap(G)$.
+\end{definition}
+
+\begin{definition}[Content of an RDF graph with blank nodes]
+\label{def:existential}
+As discussed in Remark~\ref{rem:bnodes}, blank nodes provide a mechanism for existentially quantified statements to be expressed in RDF graphs. We interpret a blank-node graph through its ground instances over $N$, which is a substitutional, instance-indexed approach. For a graph $H$ with blank nodes,
+\[
+\sem{H} =_{df.} \Bigl\langle \nabla\bigl\{\sem{\mu(H)}^{+} \mid \mu\bigr\},\ \bigsqcup\bigl\{\sem{\mu(H)}^{-} \mid \mu\bigr\} \Bigr\rangle,
+\]
+where $\mu$ ranges over the mappings $\mathrm{bnodes}(H) \rightarrow N$ (Convention~\ref{conv:finiteness}), a blank node in any position being mapped alike. Each such $\mu$ yields a ground instance $\mu(H)$ of $H$ in the sense of Definition~\ref{def:rdfgraph}, and the family is finite because $\mathrm{bnodes}(H)$ and $N$ are. For ground $H$ the family is the single empty mapping and the clause returns Definition~\ref{def:graphcontents}, so the clause may be read as applying to every graph. This is the $\exists$-clause that \citet[p.~539]{hlobil2026firstorder} derives from his $\forall$-clause (Def.~16) via $\exists x\phi =_{df.} \neg\forall x\neg\phi$, with instances over $N$ in place of objects.
+% Proposition~\ref{prop:agreement} makes the relationship exact.
+\end{definition}
+
+\begin{definition}[Admissible fragment]
+\label{def:admissible}
+Let $G$ and $H$ be graphs and $R$ a regime over $V$. A finite $N \subseteq I \cup L$ (Convention~\ref{conv:finiteness}) is \textit{admissible} for $G$, $H$ and $R$ iff $\mathrm{names}(G) \cup \mathrm{names}(H) \cup V \subseteq N$ and there is an injection from $\mathrm{bnodes}(G)$ into the IRIs in $N \setminus (\mathrm{names}(G) \cup \mathrm{names}(H) \cup V)$. Since $I$ is infinite and $G$, $H$ and $V$ are finite, some admissible $N$ exists for every $G$, $H$ and $R$. Admissible for $G$ and $H$ means admissible for $G$, $H$ and $\emptyset$.
+\end{definition}
+
+\begin{lemma}[Shapes]
+\label{lem:shapes}
+Let $A$ be a graph over $N$, and let $\mu$, $\nu$ range over the instance mappings $\mathrm{bnodes}(A) \rightarrow N$ of Definition~\ref{def:existential}. In any model, $\sem{A}^{+}$ is generated by the pairs
+\[
+\Bigl\langle \bigcup_{\nu \in x} \bmap(\nu(A)),\ \emptyset \Bigr\rangle \quad \text{for } x \text{ a non-empty set of instance mappings of } A,
+\]
+and $\sem{A}^{-}$ by the pairs
+\[
+\Bigl\langle \emptyset,\ \bigcup_{\mu} S_{\mu} \Bigr\rangle \quad \text{for each choice of a non-empty } S_{\mu} \subseteq \bmap(\mu(A)) \text{ at every } \mu.
+\]
+If $A$ is ground the family is the single empty mapping, and the shapes reduce to $\tuple{\bmap(A), \emptyset}$ and $\tuple{\emptyset, S}$ for $\emptyset \neq S \subseteq \bmap(A)$. If $A = \emptyset$, $\sem{A}^{-}$ is generated by no pairs.
+\end{lemma}
+
+\begin{proof}
+By Definition~\ref{def:roles}, adjunction selects one pair from a generating set of each argument and unions the two coordinates separately, so $\bigsqcup$ over a family of roles is generated by the coordinatewise unions of one pair per member; and $\nabla X$ is generated by the pairs of $\bigsqcup x$ for the non-empty $x \subseteq X$. Each $\nu(A)$ is ground, so by Definition~\ref{def:graphcontents} $\sem{\nu(A)}^{+}$ is generated by the single pair $\tuple{\bmap(\nu(A)), \emptyset}$ and $\sem{\mu(A)}^{-}$ by the $\tuple{\emptyset, S}$ for $\emptyset \neq S \subseteq \bmap(\mu(A))$. Definition~\ref{def:existential} gives $\sem{A}^{+}$ as $\nabla$ of the former family: $\bigsqcup x$ adjoins the single generating pair of each $\sem{\nu(A)}^{+}$ for $\nu \in x$, with union $\tuple{\bigcup_{\nu \in x} \bmap(\nu(A)), \emptyset}$, one pair per non-empty $x$. It gives $\sem{A}^{-}$ as the adjunction of the latter family, which selects a non-empty $S_{\mu}$ at every $\mu$ and unions, giving $\tuple{\emptyset, \bigcup_{\mu} S_{\mu}}$, one pair per choice. The ground case is the singleton family; when $A = \emptyset$ there is no non-empty $S$.
+\end{proof}
+
+Nothing in Lemma~\ref{lem:shapes} or Lemma~\ref{lem:witness} uses injectivity of $\bmap$; they hold for the bearer map of any model. By Lemma~\ref{lem:reduction}, $\sem{G} \imp \sem{H}$ holds in a model iff every pair $\tuple{\bigcup_{\nu \in x}\bmap(\nu(G)),\ \bigcup_{\mu} S_{\mu}}$, for $x$ and the $S_{\mu}$ as in Lemma~\ref{lem:shapes}, lies in $\I$. We call these the \textit{pairs of} $\sem{G} \imp \sem{H}$.
+
+\subsection{Bases, frames and Herbrand models}
+\label{sec:bases}
+
+\begin{definition}[Base; model fitness {\citep[Def.~75]{hlobil2025reasons}}]
+\label{def:fitness}
+A \textit{base} $\Bcal = \tuple{\mathcal{L}_{\Bcal}, \imp_{\Bcal}}$ is a lexicon of atomic sentences $\mathcal{L}_{\Bcal}$ together with a base implication relation $\imp_{\Bcal}$ over it. A model $\Mcal$ is \textit{fit} for $\Bcal$ iff, for all $\Gamma, \Delta \subseteq \mathcal{L}_{\Bcal}$: if $\Gamma \imp_{\Bcal} \Delta$ then $\sem{\Gamma}^{\Mcal} \imp \sem{\Delta}^{\Mcal}$. A \textit{base over $N$} has as lexicon the ground triples of $\Lrdf$ over $N$ (Convention~\ref{conv:finiteness}) and a base relation satisfying Containment: $\Gamma \imp_{\Bcal} \Delta$ whenever $\Gamma \cap \Delta \neq \emptyset$. $N$ is finite, so there are finitely many ground triples over $N$, and the $\Gamma$ and $\Delta$ that fitness quantifies over are finite, as Definition~\ref{def:contententailment} requires. Two bases over $N$ are of particular interest. The \textit{canonical RDF base} $\Bcal_{C}$ has Containment alone as its relation, $\Gamma \imp_{\Bcal_{C}} \Delta$ iff $\Gamma \cap \Delta \neq \emptyset$. 
+For a regime $R$ over $V \subseteq N$ (Definition~\ref{def:entailmentregime}), the base $\Bcal_{R}$ \textit{specified by} $R$ has $\Gamma \imp_{\Bcal_{R}} \Delta$ iff $\Gamma$ is $R$-inconsistent or $\Delta \cap \cl_R(\Gamma) \neq \emptyset$; since $\Gamma \subseteq \cl_R(\Gamma)$ it satisfies Containment, and $\Bcal_{\emptyset} = \Bcal_{C}$. In particular $\Gamma \imp_{\Bcal_{R}} \emptyset$ iff $\Gamma$ is $R$-inconsistent: the incoherent sets of $\Bcal_{R}$ are exactly the $R$-inconsistent ones.
+The requirement $V \subseteq N$ ensures that no rule instance is excluded by the restriction to $N$: by Lemma~\ref{lem:uniform} below, $\cl_R(\Gamma) \setminus \{\bot\}$ is over $N$ whenever $\Gamma$ is.
+\end{definition}
+
+Note that $\imp_{\Bcal_R}$ is defined through the closure, and is therefore monotone in both coordinates and closed under cut; together with Containment, this says that the frame it induces (Definition~\ref{def:inducedframe}) is a \textit{structural} model in the sense of \citet[Def.~30]{hlobil2026firstorder}. It is in particular explosive: if $\Gamma$ is $R$-inconsistent then $\Gamma \imp_{\Bcal_R} \Delta$ for every $\Delta$, by monotonicity in the succedent applied to $\tuple{\Gamma, \emptyset}$, which is the verdict of the model theory, on which an inconsistent graph entails every graph, and is therefore what recovery must match. Explosion is a property of the regime's format, not of the semantics: an implication-space base may contain $\tuple{\Gamma, \emptyset}$ without containing $\tuple{\Gamma, \Delta}$ for every $\Delta$, and nothing below assumes otherwise.
+A base that took the rule instances of $R$ as its pairs without closing would validate $\{(a, \texttt{rdf:type}, C), (C, \texttt{rdfs:subClassOf}, D)\} \imp (a, \texttt{rdf:type}, D)$ and not its weakening by an unrelated triple, since the Herbrand model of Definition~\ref{def:canonicalmodel} over such a base is fit for it; that relation corresponds to no regime, and its failure of monotonicity is by omission rather than by defeat. A base over $N$ in general, however, need not be monotone or closed under cut, or explosive.
+
+\begin{definition}[The implication frame induced by a base]
+\label{def:inducedframe}
+Let $\Bcal$ be a base over $N$, and let $\bmap$ be injective on ground triples over $N$. The frame induced by $\Bcal$ is $\tuple{\B, \I_{\Bcal}}$, where
+\[
+\I_{\Bcal} = \I_{C} \cup \bigl\{\tuple{\bmap(\Gamma), \bmap(\Delta)} \mid \Gamma \imp_{\Bcal} \Delta\bigr\}.
+\]
+We write $\I_{R}$ for $\I_{\Bcal_{R}}$; its second set is the pairs $\tuple{\bmap(\Gamma), \bmap(\Delta)}$ with $\Gamma$ $R$-inconsistent or $\Delta \cap \cl_R(\Gamma) \neq \emptyset$. For $\Bcal_{C}$ the second set consists of overlapping pairs, so $\I_{\Bcal_C} = \I_{\emptyset} = \I_{C}$ is the canonical frame.
+\end{definition}
+
+\begin{definition}[Herbrand models]
+\label{def:canonicalmodel}
+Let $\Bcal$ be a base over $N$. $\Mcal_{\Bcal}^{\mathsf{RDF}}$ is the implication-space model whose frame is $\tuple{\B, \I_{\Bcal}}$ of Definition~\ref{def:inducedframe} and whose interpretation is Herbrand: $\Obb$ is the disjoint union of $N$ and a finite, possibly empty, set of \textit{surplus} objects, and every name in $N$ denotes itself. Then $\bmap$ is injective on ground triples over $N$, each ground triple $t$ over $N$ denoting a bearer $T\tuple{s,p,o}$ that no other triple shares, and $t$ receives the content $\role(\bmap(t))$, the role of its own bearer, so that the interpretation is homophonic in the sense of \citet[Def.~72]{hlobil2025reasons}; this is simply Definition~\ref{def:contententailment}'s atomic clause composed with $\bmap$. We write $\Mcal_{R}^{\mathsf{RDF}}$ for $\Mcal_{\Bcal_R}^{\mathsf{RDF}}$, and the \textit{canonical model} $\Mcal_{C}^{\mathsf{RDF}}$ is $\Mcal_{\emptyset}^{\mathsf{RDF}}$. The interpretation of $\Mcal_{\Bcal}^{\mathsf{RDF}}$, as of any implication-space model, assigns each ground graph the content of Definition~\ref{def:graphcontents} and each graph with blank nodes the content of Definition~\ref{def:existential}.
+\end{definition}
+
+\subsection{Recovery}
+\label{sec:recovery}
+
+\begin{theorem}[Recovery]
+\label{thm:recovery}
+Let $\Bcal$ be a base over $N$ and $b_{\Bcal}$ the set of models fit for $\Bcal$. For graphs $G$ and $H$ over $N$, $G \mimp{b_{\Bcal}} H$ iff $G \imp H$ in $\Mcal_{\Bcal}^{\mathsf{RDF}}$.
+\end{theorem}
+
+\begin{proof}
+\textit{Only if:} By Proposition~\ref{prop:positional}, for $\Gamma, \Delta \subseteq \mathcal{L}_{\Bcal}$, $\sem{\Gamma} \imp \sem{\Delta}$ in $\Mcal_{\Bcal}^{\mathsf{RDF}}$ iff $\tuple{\bmap(\Gamma), \bmap(\Delta)} \in \I_{\Bcal}$, which holds whenever $\Gamma \imp_{\Bcal} \Delta$ by Definition~\ref{def:inducedframe}. Hence $\Mcal_{\Bcal}^{\mathsf{RDF}}$ is fit for $\Bcal$ and lies in $b_{\Bcal}$, and a $b_{\Bcal}$-implication holds in it.
+
+\textit{If:} Suppose $G \imp H$ in $\Mcal_{\Bcal}^{\mathsf{RDF}}$, and let $\Mcal$ be any model fit for $\Bcal$, with bearer map $\bmap_{\Mcal}$. Take any pair $\tuple{\bigcup_{\nu \in x}\bmap_{\Mcal}(\nu(G)), \bigcup_{\mu} S_{\mu}}$ of $\sem{G} \imp \sem{H}$ in $\Mcal$ (Lemma~\ref{lem:shapes}), let $\Gamma = \bigcup_{\nu \in x} \nu(G)$, and let $\Delta$ be a set of ground triples obtained by choosing, for each bearer of each $S_{\mu}$, a triple of $\mu(H)$ denoting it, so that $\bmap_{\Mcal}(\Delta) = \bigcup_{\mu} S_{\mu}$. The same $x$, with $S'_{\mu} = \bmap(\Delta \cap \mu(H))$, indexes a pair of $\sem{G} \imp \sem{H}$ in $\Mcal_{\Bcal}^{\mathsf{RDF}}$, namely $\tuple{\bmap(\Gamma), \bmap(\Delta)}$: each $S'_{\mu}$ is non-empty because a triple was chosen at $\mu$, and every triple of $\Delta$ was chosen at some $\mu$ and lies in $\mu(H)$. By hypothesis that pair is in $\I_{\Bcal}$, so by injectivity of $\bmap$ either $\Gamma \cap \Delta \neq \emptyset$ or $\Gamma \imp_{\Bcal} \Delta$; by Containment, $\Gamma \imp_{\Bcal} \Delta$ in either case. Both are ground graphs over $N$, so fitness gives $\sem{\Gamma} \imp \sem{\Delta}$ in $\Mcal$, which by Proposition~\ref{prop:positional} is $\tuple{\bmap_{\Mcal}(\Gamma), \bmap_{\Mcal}(\Delta)} \in \I$, the pair we took. The pair and the model were arbitrary; hence $G \mimp{b_{\Bcal}} H$.
+\end{proof}
+
+Theorem~\ref{thm:recovery} says that the class of fit models adds nothing to the base beyond the clause for blank nodes: whatever relation over ground triples a practice supplies, implication in the fit models is that relation, lifted to graphs by Definition~\ref{def:existential} and computed in the Herbrand model. Nothing in it assumes the base monotone or closed under cut. When the base is a closure, the Herbrand model's implication has a witness characterization, and the recovery becomes the regime's own entailment relation.
+
+\subsection{Closure regimes}
+\label{sec:closure}
+
+\begin{lemma}[Witness coordinate]
+\label{lem:witness}
+Let $G$ and $H$ be graphs and $N$ admissible for them, and let $X$ be a set of triples with $\mathrm{names}(X) \subseteq N$ and $\mathrm{bnodes}(X) \subseteq \mathrm{bnodes}(G)$. Suppose there is an instance mapping $\mu_0$ with $\mu_0(H) \subseteq X$, and let $\nu_0$ be an instance mapping $\mathrm{bnodes}(G) \rightarrow N$. Then $\nu_0 \circ \mu_0$ restricted to $\mathrm{bnodes}(H)$ is one of the mappings $\mathrm{bnodes}(H) \rightarrow N$ of Definition~\ref{def:existential}, and
+\[
+  (\nu_0 \circ \mu_0)(H) \subseteq \nu_0(X), \quad\text{hence}\quad \bmap\bigl((\nu_0 \circ \mu_0)(H)\bigr) \subseteq \bmap(\nu_0(X)).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $b \in \mathrm{bnodes}(H)$. Then $b$ occurs in a triple of $H$, so $\mu_0(b)$ occurs in $\mu_0(H) \subseteq X$, hence $\mu_0(b) \in \mathrm{names}(X) \cup \mathrm{bnodes}(X)$. If $\mu_0(b)$ is a name, $\nu_0$ fixes it and it lies in $N$; if $\mu_0(b)$ is a blank node, it lies in $\mathrm{bnodes}(G)$ and $\nu_0$ sends it into $N$. Either way $(\nu_0 \circ \mu_0)(b) \in N$. Applying $\nu_0$ to $\mu_0(H) \subseteq X$ gives $(\nu_0 \circ \mu_0)(H) = \nu_0(\mu_0(H)) \subseteq \nu_0(X)$, and $\bmap$ is monotone on inclusions.
+\end{proof}
+
+\begin{lemma}[Skolemization]
+\label{lem:skolem}
+Let $G$ and $H$ be graphs and $N$ admissible for $G$, $H$ and $R$. There are an instance mapping $\nu_{sk}: \mathrm{bnodes}(G) \rightarrow N$ and a map $\sigma : I \cup B \cup L \to I \cup B \cup L$, extended to triples and graphs pointwise, such that $\nu_{sk}$ is injective with image a set of IRIs in $N \setminus (\mathrm{names}(G) \cup \mathrm{names}(H) \cup V)$; $\sigma$ sends each $\nu_{sk}(b)$ to $b$ and fixes everything else; $\sigma(\nu_{sk}(G)) = G$; $\sigma(H) = H$; and $\sigma$ is a map of the kind in Definition~\ref{def:entailmentregime}(2).
+\end{lemma}
+
+\begin{proof}
+Definition~\ref{def:admissible} supplies the injection; let $\nu_{sk}$ be it and $\sigma$ its inverse on the image, the identity elsewhere, well defined by injectivity. Then $\sigma$ undoes $\nu_{sk}$ on $\mathrm{bnodes}(G)$ and both fix everything else in $G$, giving $\sigma(\nu_{sk}(G)) = G$; no value of $\nu_{sk}$ occurs in $H$, giving $\sigma(H) = H$; and $\sigma$ fixes $L \cup V$ pointwise and sends $I \cup B$ into $I \cup B$, since the values of $\nu_{sk}$ are IRIs outside $V$ and their images are blank nodes.
+\end{proof}
+
+\begin{remark}
+\label{rem:skolem}
+Skolemization \citep[\S 3.5]{cyganiak2014rdf} of blank nodes is sound in the antecedent but not in the succedent, because on the succedent side there is no possibility that the skolemized blank node yields a witness for the existential, given the fact that the skolemization of a given blank node is guaranteed to not occur anywhere in the antecedent \citep{hogan2015skolemising}. This asymmetry between the antecedent and the succedent allows us to treat blank nodes correctly, as described in Remark~\ref{rem:bnodes}; Skolemization introduces names for blank nodes that don't have names to begin with, and while the introduction is harmless in the antecedent it is fatal in the succedent.
+\end{remark}
+
+\begin{lemma}[Uniformity of closure]
+\label{lem:uniform}
+Let $R$ be a regime over $V$ and $\rho$ a map of the kind in Definition~\ref{def:entailmentregime}(2). Then $\rho(\cl_R(X)) \subseteq \cl_R(\rho(X))$ for every set $X$ of triples; in particular, if $X$ is $R$-inconsistent then so is $\rho(X)$. Moreover, if $G$ is a graph with $\mathrm{names}(G) \cup V \subseteq N$, then $\cl_R(G) \setminus \{\bot\}$ is a finite graph with $\mathrm{names}(\cl_R(G) \setminus \{\bot\}) \subseteq N$ and $\mathrm{bnodes}(\cl_R(G) \setminus \{\bot\}) \subseteq \mathrm{bnodes}(G)$.
+\end{lemma}
+
+\begin{proof}
+$\cl_R(X) = \bigcup_{k} X_k$ with $X_0 = X$ and $X_{k+1} = X_k \cup \{c \mid \tuple{A,c} \in R,\ A \subseteq X_k\}$. By induction, $\rho(X_k) \subseteq \cl_R(\rho(X))$: if $\tuple{A,c} \in R$ with $A \subseteq X_k$, uniformity gives $\tuple{\rho(A), \rho(c)} \in R$ with $\rho(A) \subseteq \rho(X_k) \subseteq \cl_R(\rho(X))$, so $\rho(c) \in \cl_R(\rho(X))$. 
+The case $c=\bot$ is included, since $\rho(\bot)=\bot$; hence if $\bot \in \cl_R(X)$ then $\bot \in \cl_R(\rho(X))$, i.e.\ $\rho(X)$ is $R$-inconsistent whenever $X$ is.
+For the second claim, by range restriction every element of $I \cup B \cup L$ occurring in $X_{k+1}$ occurs in $X_k$ or in $V$, so every triple of $\cl_R(G)\setminus \{\bot\}$ is over $\mathrm{names}(G) \cup V \cup \mathrm{bnodes}(G)$, a finite set.
+\end{proof}
+
+\begin{lemma}[Witness characterization]
+\label{lem:witnesschar}
+Let $R$ be a regime over $V$, and $G$, $H$ graphs with $N$ admissible for $G$, $H$ and $R$. In $\Mcal_{R}^{\mathsf{RDF}}$, $G \imp H$ iff $G$ $R$-entails $H$, i.e., iff $G$ is $R$-inconsistent or there is an instance mapping $\mu$ with $\mu(H) \subseteq \cl_R(G) \setminus \{\bot\}$.
+\end{lemma}
+
+\begin{proof}
+If $H = \emptyset$ then $\sem{H}^{-}$ is generated by no pairs (Lemma~\ref{lem:shapes}), so $\sem{G} \imp \sem{H}$ holds vacuously; correspondingly $\emptyset$ is a subgraph of $\cl_R(G) \setminus \{\bot\}$ and an instance of itself. Assume $H \neq \emptyset$.
+
+Every pair of $\sem{G} \imp \sem{H}$ has the form $\tuple{\bmap(\Gamma), \bmap(\Delta)}$ for ground graphs $\Gamma = \bigcup_{\nu \in x}\nu(G)$ and $\Delta$ over $N$, where $\Delta$ is obtained by choosing, for each bearer in each $S_{\mu}$, the triple of $\mu(H)$ that denotes it; $\Delta$ is unique by injectivity of $\bmap$ (Definition~\ref{def:canonicalmodel}). By injectivity again, $\tuple{\bmap(\Gamma), \bmap(\Delta)} \in \I_C$ iff $\Gamma \cap \Delta \neq \emptyset$, and it lies in the second set of Definition~\ref{def:inducedframe} iff $\Gamma$ is $R$-inconsistent or $\Delta \cap \cl_R(\Gamma) \neq \emptyset$; as $\Gamma \subseteq \cl_R(\Gamma)$, the pair is in $\I_R$ iff $\Gamma$ is $R$-inconsistent or $\Delta \cap \cl_R(\Gamma) \neq \emptyset$.
+
+\textit{If:} Suppose first that $G$ is $R$-inconsistent. Take any pair, and pick $\nu_0 \in x$. By Lemma~\ref{lem:uniform}, $\nu_0(G)$ is $R$-inconsistent, and $\nu_0(G) \subseteq \Gamma$ gives $\bot \in \cl_R(\nu_0(G)) \subseteq \cl_R(\Gamma)$ by monotonicity of $\cl_R$; so $\Gamma$ is $R$-inconsistent and the pair is in $\I_R$. Suppose instead that $\mu_0(H) \subseteq \cl_R(G) \setminus \{\bot\}$. Take any pair, and pick $\nu_0 \in x$. The hypotheses of Lemma~\ref{lem:witness} hold at $X = \cl_R(G) \setminus \{\bot\}$ by Lemma~\ref{lem:uniform}, so $\nu_0 \circ \mu_0$ is one of the coordinates $\mu$, at which the pair selects a non-empty $S_{\nu_0 \circ \mu_0} \subseteq \bmap((\nu_0 \circ \mu_0)(H)) \subseteq \bmap(\nu_0(\cl_R(G) \setminus \{\bot\}))$. By Lemma~\ref{lem:uniform} applied to $\nu_0$, $\nu_0(\cl_R(G) \setminus \{\bot\}) \subseteq \cl_R(\nu_0(G)) \subseteq \cl_R(\Gamma)$, the last by monotonicity of $\cl_R$ since $\nu_0(G) \subseteq \Gamma$. So the triple of $\Delta$ chosen at that coordinate lies in $\cl_R(\Gamma)$, $\Delta \cap \cl_R(\Gamma) \neq \emptyset$, and the pair is in $\I_R$. In either case the pair was arbitrary, so $G \imp H$.
+
+\textit{Only if:} Suppose $G$ is not $R$-inconsistent and no instance mapping $\mu$ has $\mu(H) \subseteq \cl_R(G) \setminus \{\bot\}$, and let $\nu_{sk}$ and $\sigma$ be as in Lemma~\ref{lem:skolem}. Then $\nu_{sk}(G)$ is not $R$-inconsistent: otherwise, by Lemma~\ref{lem:uniform} applied to $\sigma$, $\sigma(\nu_{sk}(G)) = G$ would be. And no mapping $\mu: \mathrm{bnodes}(H) \rightarrow N$ has $\mu(H) \subseteq \cl_R(\nu_{sk}(G)) \setminus \{\bot\}$: otherwise, since $\sigma$ fixes $H$, $(\sigma \circ \mu)(H) = \sigma(\mu(H)) \subseteq \sigma(\cl_R(\nu_{sk}(G)) \setminus \{\bot\}) \subseteq \cl_R(\sigma(\nu_{sk}(G))) \setminus \{\bot\} = \cl_R(G) \setminus \{\bot\}$ by Lemma~\ref{lem:uniform}, and $\sigma \circ \mu$ would be a witness. So for each such $\mu$ pick $t_{\mu} \in \mu(H) \setminus \cl_R(\nu_{sk}(G))$, and take the pair with $x = \{\nu_{sk}\}$ and $S_{\mu} = \{\bmap(t_{\mu})\}$. Its $\Gamma$ is $\nu_{sk}(G)$, which is not $R$-inconsistent, and its $\Delta$ is $\{t_{\mu} \mid \mu\}$, which is disjoint from $\cl_R(\Gamma)$; so the pair is not in $\I_R$, and $G \nimp H$.
+\end{proof}
+
+The proof in the $R = \emptyset$ case is the classical argument that simple entailment is preserved by Skolemizing the antecedent and not the succedent (Remark~\ref{rem:skolem}); the general case inserts $\cl_R$ where Lemma~\ref{lem:uniform} allows, which is everywhere.
+
+\begin{proposition}[Incoherence recovery]
+\label{prop:incoherence}
+Let $R$ be a regime over $V$, and $G$ a graph with $N$ admissible for $G$, $\emptyset$ and $R$. Write $\sem{G} \imp \emptyset$ for content entailment with the empty set of succedent contents (Definition~\ref{def:contententailment}), the adjunction over the empty family being the role generated by $\tuple{\emptyset, \emptyset}$. In $\Mcal_{R}^{\mathsf{RDF}}$, $\sem{G} \imp \emptyset$ iff $G$ is $R$-inconsistent.
+\end{proposition}
+
+\begin{proof}
+By Lemma~\ref{lem:reduction} and Lemma~\ref{lem:shapes}, $\sem{G} \imp \emptyset$ holds iff every pair $\tuple{\bigcup_{\nu \in x}\bmap(\nu(G)), \emptyset}$, for $x$ a non-empty set of instance mappings of $G$, lies in $\I_R$. Such a pair is $\tuple{\bmap(\Gamma), \bmap(\emptyset)}$ for the ground graph $\Gamma = \bigcup_{\nu \in x}\nu(G)$; it is not in $\I_C$, and by Definition~\ref{def:inducedframe} and injectivity of $\bmap$ it is in $\I_R$ iff $\Gamma$ is $R$-inconsistent.
+
+\textit{If:} Suppose $G$ is $R$-inconsistent, take any such pair, and pick $\nu_0 \in x$. By Lemma~\ref{lem:uniform}, $\nu_0(G)$ is $R$-inconsistent, and $\nu_0(G) \subseteq \Gamma$ gives $\bot \in \cl_R(\Gamma)$ by monotonicity; so the pair is in $\I_R$.
+
+\textit{Only if:} Suppose $G$ is not $R$-inconsistent, and let $\nu_{sk}$ and $\sigma$ be as in Lemma~\ref{lem:skolem} for $G$, $\emptyset$ and $R$. Then $\nu_{sk}(G)$ is not $R$-inconsistent, since otherwise by Lemma~\ref{lem:uniform} applied to $\sigma$, $\sigma(\nu_{sk}(G)) = G$ would be. The pair with $x = \{\nu_{sk}\}$ has $\Gamma = \nu_{sk}(G)$ and is therefore not in $\I_R$; so $\sem{G} \nimp \emptyset$.
+\end{proof}
+
+Proposition~\ref{prop:incoherence} concerns denial of nothing, not denial of the empty graph: $\sem{G} \imp \sem{\emptyset}$ holds vacuously for every $G$ (Lemma~\ref{lem:witnesschar}), since the empty graph is simply entailed by every graph, whereas $\sem{G} \imp \emptyset$ holds exactly when asserting $G$ alone is out of bounds. Read on the practice's side, the proposition says that the consistency check an OWL 2 RL reasoner performs by deriving \emph{false} is the semantics' verdict that $\sem{G}$ is an incoherent content, and that the false-concluding rules of \citet{motik2012owl} are thereby recovered in the same sense as the rest of the regime.
+
+\begin{theorem}[Closure regimes]
+\label{thm:closure}
+Let $R$ be an entailment regime over $V$ and $b_R$ the set of models fit for $\Bcal_{R}$. For graphs $G$ and $H$ and an $N$ admissible for $G$, $H$ and $R$, $G \mimp{b_R} H$ iff $G$ $R$-entails $H$, i.e., iff $G$ is $R$-inconsistent or $\cl_R(G) \setminus \{\bot\}$ simply entails $H$.
+\end{theorem}
+
+\begin{proof}
+By Theorem~\ref{thm:recovery}, $G \mimp{b_R} H$ iff $G \imp H$ in $\Mcal_{R}^{\mathsf{RDF}}$, which by Lemma~\ref{lem:witnesschar} holds iff $G$ is $R$-inconsistent or $\cl_R(G) \setminus \{\bot\}$ simply entails $H$.
+\end{proof}
+
+Read proof-theoretically, with $R$-entailment as a derivability characterization, Theorem~\ref{thm:closure} is a soundness and completeness result: implication-space semantics is adequate for every regime of Definition~\ref{def:entailmentregime}. We expect that NMMS \citep{hlobil2025reasons} over $\Bcal_{R}$ for ground graphs, extended with the existential of \citet{hlobil2026firstorder} for blank nodes, is a sound and complete calculus for $R$-entailment; we leave the development of that line of thought to future work. Theorem~\ref{thm:closure}'s right-hand side does not mention $N$: Definition~\ref{def:simpleentailment} quantifies over all instance mappings, not only those into $N$, and $\cl_R(G)$ does not depend on $N$, nor does the $R$-inconsistency of $G$. The verdict is therefore the same for every admissible $N$, and since some admissible $N$ exists for any $G$, $H$ and $R$ (Definition~\ref{def:admissible}), the relation recovered in the fit models is $R$-entailment simpliciter.
+
+\begin{corollary}[Simple RDF entailment]
+\label{cor:simple}
+Let $b$ be the set of models fit for $\Bcal_{C}$. For graphs $G$ and $H$ and any $N$ admissible for them, $G \mimp{b} H$ iff $G$ simply entails $H$. For standard graphs $G$ and $H$, $G \mimp{b} H$ iff $G$ simply entails $H$ in the sense of \citet{hayes2014rdf}.
+\end{corollary}
+
+\begin{proof}
+The first claim is Theorem~\ref{thm:closure} at $R = \emptyset$; the second follows by Lemma~\ref{lem:conservative}.
+\end{proof}
+
+\begin{corollary}[RDFS]
+\label{cor:rdfs}
+Let $G$ and $H$ be standard graphs, and let $R_{\mathrm{RDFS}}$ be the RDF and RDFS entailment patterns of \citet[\S 9.2]{hayes2014rdf} over the generalized syntax, with the axiomatic triples read as rules with empty premises and the container-membership axiomatic triples restricted to a finite non-empty set $K$ of indices containing every index occurring in $G$ or $H$. If $G$ is RDFS-consistent, then $G \mimp{b_{R_{\mathrm{RDFS}}}} H$ iff $G$ RDFS-entails $H$.
+\end{corollary}
+
+\begin{proof}
+$R_{\mathrm{RDFS}}$ is a regime over the finite vocabulary consisting of the RDF and RDFS vocabulary, the recognized datatype IRIs, and $\{\texttt{rdf:\_}i \mid i \in K\}$ (Remark~\ref{rem:regimeschemas}). \citet[App.~A]{hayes2014rdf} state that, for RDFS-consistent $G$, $G$ RDFS-entails $H$ iff the generalized RDFS closure of $G$ towards $H$ simply entails $H$, on the basis of \citet[Thm.~4.12]{terhorst2005completeness}, with the closure taken partial over $K$ as in the appendix's step 3, omitting the container-membership axiomatic triples for indices used in neither $G$ nor $H$ provided at least one is retained, which is the condition on $K$. That closure is $\cl_{R_{\mathrm{RDFS}}}(G)$, no graph is $R_{\mathrm{RDFS}}$-inconsistent since the regime has no false-concluding rule, and Theorem~\ref{thm:closure} applies.
+\end{proof}
+
+The consistency proviso is not idle: \texttt{xsd:string} and \texttt{rdf:langString} are built-in datatypes recognized in every RDFS interpretation and have disjoint value spaces, so a graph that types one term with both is RDFS-unsatisfiable (\citealp[\S 9.2.1]{hayes2014rdf} give the analogous example for \texttt{xsd:integer} and \texttt{xsd:boolean}), and no pattern of the rule set concludes it. The clash is expressible in the format of Definition~\ref{def:entailmentregime} as the false-concluding rule $\langle\{(x,\allowbreak \texttt{rdf:type},\allowbreak \texttt{xsd:string}),\allowbreak (x, \texttt{rdf:type},\allowbreak \texttt{rdf:langString})\},\allowbreak \bot\rangle$ for any term $x$; $R_{\mathrm{RDFS}}$ extended with it is a regime whose $R$-inconsistency is the rule-level detection of the clash, and Proposition~\ref{prop:incoherence} recovers it. Whether that rule detects every RDFS-inconsistent graph recognizing these two datatypes is not established by \citet[App.~A]{hayes2014rdf}, which makes no completeness claim for inconsistency, nor by \citet{terhorst2005completeness}, whose consistency theorem (Thm.~4.15) concerns the weaker $D^{*}$ semantics under which the clash is not an inconsistency at all; so the proviso stays, and the gap is the Recommendation's rather than the semantics'. For OWL 2 RL there is no such gap: \citet{motik2012owl} specify inconsistency by the false-concluding rules themselves, so Corollary~\ref{cor:owlrl} carries no proviso and the recovery of incoherence there is exact.
+
+\begin{corollary}[OWL 2 RL/RDF]
+\label{cor:owlrl}
+Let $R_{\mathrm{RL}}$ be the set of all instances of the OWL 2 RL/RDF rules of \citet[Tables~4--7 and~9]{motik2012owl}, false-concluding rules included, together with rule dt-type1 and dt-not-type of Table~8, over the ternary predicate $T$, and let $N$ be admissible for $G$, $H$ and $R_{\mathrm{RL}}$. Then $G \mimp{b_{R_{\mathrm{RL}}}} H$ iff $G$ is $R_{\mathrm{RL}}$-inconsistent or $\cl_{R_{\mathrm{RL}}}(G) \setminus \{\bot\}$ simply entails $H$.
+\end{corollary}
+
+\begin{proof}
+Take $V$ to be the OWL 2 RL vocabulary together with the supported datatype IRIs. The rules are Horn over generalized triples, some concluding $\bot$, with no side conditions on variables other than dt-not-type's condition on a literal, whose datatype argument lies in $V$; their only constants outside $V$ are literals occurring in premises, which the maps of Definition~\ref{def:entailmentregime}(2) fix; and every term of a conclusion occurs in the premises or in $V$, vacuously for $\bot$. Since $R_{\mathrm{RL}}$ contains every instance, it is closed under those maps. It is infinite, as the schema families over RDF lists are, which Definition~\ref{def:entailmentregime} permits; the closure of any graph is finite by Lemma~\ref{lem:uniform}. So $R_{\mathrm{RL}}$ is a regime over $V$ in the sense of Definition~\ref{def:entailmentregime}, and the claim is Theorem~\ref{thm:closure}.
+\end{proof}
+
+The datatype rules dt-type2, dt-eq and dt-diff of \citet[Table~8]{motik2012owl} are axiomatic families whose conclusions mention literals, ranging over the whole value space of each supported datatype; they are not range-restricted in the sense of Definition~\ref{def:entailmentregime}, and their closure is infinite. They are left aside here, as $D$-entailment is on the RDFS side.
+Corollary~\ref{cor:owlrl} recovers the regime's inconsistency along with its entailments: \citet{motik2012owl} define an inconsistent graph as one from which the rules derive \emph{false}, so by Proposition~\ref{prop:incoherence} a graph is incoherent in the fit models exactly when the retained rules derive false; inconsistencies that require the datatype value-space rules of Table~8, through dt-eq and dt-diff, lie outside $R_{\mathrm{RL}}$ as their entailments do.
+% a graph is incoherent in the fit models exactly when it is inconsistent under OWL 2 RL/RDF, with no proviso of the kind Corollary~\ref{cor:rdfs} needs.
+Corollary~\ref{cor:owlrl} is a recovery of the rule-defined regime as such; its relation to the OWL 2 Direct Semantics is the content of Theorem PR1 of \citet{motik2012owl}, which we do not touch.
+
+\section{Conclusion}
+\label{sec:discussion}
+
+Since the inception of the Semantic Web, there have been two legs to stand on to establish meaning in RDF. The first is the model-theoretic framework of \citet{hayes2014rdf}, with interpretations, satisfaction, and entailment as truth preservation. The second is entailment as closure under rules followed by simple entailment, as established in \citet{terhorst2005completeness}. The above results establish a third, inferentialist leg: entailment as implication in the models fit for a base.
+
+We suggest that this third leg can change what Semantic Web practice publishes. The RDF entailment regimes occupy an austere corner of the space of implication frames: monotone, single-succedent, closed under Cut, explosive. The inability to address negation and defeasibility has over the years spawned an array of machinery to express incompatibilities. Some of it is now within reach of the semantics: the false-concluding rules of OWL 2 RL \citep{motik2012owl} are recovered as incoherent positions (Proposition~\ref{prop:incoherence}). Some of it is not: the SHACL constraint language \citep{knublauch2026shapes} validates a graph against a closed-world shape, which is a claim about the graph rather than a claim in it, and the query-side idioms that handle defeat are of the same kind. We conjecture that implication-space semantics can make the treatment of constraints and material inference in RDF rigorous, in a way that practitioners can take advantage of using their existing tools and, most importantly, without requiring changes to the RDF object language syntax itself.
+
+\section*{Acknowledgements}
+
+The author would like to thank Robert Brandom, Kris Brown, Ulf Hlobil, Pavle Jovanovic, and Ryan Simonelli for their comments and feedback.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

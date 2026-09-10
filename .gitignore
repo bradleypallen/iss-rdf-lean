@@ -1,0 +1,21 @@
+# Lean / Lake
+/.lake/
+/lakefile.olean
+
+# Stale snapshot of the Lean sources that are tracked here directly
+/ISRDF-lean.zip
+
+# LaTeX build products
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+manuscript.pdf
+
+# macOS
+.DS_Store
