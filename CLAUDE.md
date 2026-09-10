@@ -46,6 +46,17 @@ The main theorems (`recovery`, `witness_characterization`, `incoherence_recovery
 
 Manuscript: `latexmk -pdf manuscript.tex`.
 
+`manuscript.log` is ISO-8859 encoded, not UTF-8. macOS `grep` therefore classifies it as
+binary and prints *nothing at all* rather than reporting matches — a check for errors will
+come back falsely clean. Always pass `-a` when reading it:
+
+```sh
+grep -an '^!' manuscript.log                       # errors
+grep -an 'undefined\|Undefined' manuscript.log     # unresolved refs and citations
+grep -an 'LaTeX Warning\|Package .* Warning' manuscript.log
+grep -ac 'Overfull \\hbox' manuscript.log          # cosmetic; a few are expected
+```
+
 ## Architecture
 
 `ISRDF.lean` is a bare re-export. Real content is two modules, layered:
