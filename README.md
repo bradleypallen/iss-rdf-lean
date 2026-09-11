@@ -1,10 +1,12 @@
 # ISRDF — Lean 4 formalization of "Implication-Space Semantics for RDF"
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 6 Sept 2026),
-in Lean 4 (v4.34.0-rc2) against Mathlib master (Sept 2026). Both files compile with
+in Lean 4 (v4.34.0-rc2) against Mathlib commit `a2ba36b` (Sept 2026). Both files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
-Build: `lake update && lake exe cache get && lake build`.
+Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
+Mathlib to commit `a2ba36b`; do not run `lake update`, which would move Mathlib and break
+lemma names.
 
 ## Where each result lives
 
@@ -17,7 +19,7 @@ Build: `lake update && lake exe cache get && lake build`.
 | Lemma 6 (uniformity of closure) | `Regime.cl_map`, `Regime.clPos_map`, `Regime.inconsistent_map`, `Regime.terms_clPos_subset`, `Regime.bnodes_clPos_subset` | Rdf.lean |
 | Def 5–6 (implication space, RSR, roles, ⊔, ⊓, ∇) | `ISpace`, `RSR`, `Role`, `adj`, `adjFam`, `powSymj` | Semantics.lean |
 | Lemma 2 (Reduction) | `reduction` | Semantics.lean |
-| well-definedness of ⊔, ⊓ on roles | `RSR_adj`, `RSR_union`, `adj_congr` | Semantics.lean |
+| well-definedness of ⊓ and of binary ⊔ in its left argument (not yet shown for family ⊔ `adjFam` or ∇ `powSymj`) | `RSR_adj`, `RSR_union`, `adj_congr` | Semantics.lean |
 | Def 7 (content entailment, models) | `CEnt`, `Model`, `Model.SentEnt`, `Model.GEnt` | Semantics.lean |
 | Prop 1 (Positional criterion) | `Model.positional` | Semantics.lean |
 | Def 8 (canonical frame) | `IC` | Semantics.lean |

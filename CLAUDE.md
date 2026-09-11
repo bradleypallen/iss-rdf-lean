@@ -27,10 +27,10 @@ lake build ISRDF.Semantics  # build a single module
 lake env lean ISRDF/Rdf.lean   # type-check one file directly, full error output
 ```
 
-`lakefile.toml` requests Mathlib at `rev = "master"`, but `lake-manifest.json` pins commit
-`a2ba36b` (Sept 2026) and `lean-toolchain` pins `v4.34.0-rc2`. `lake build` respects the
-manifest. Do **not** run `lake update` unless deliberately bumping Mathlib — it will move
-master forward, likely invalidate the Mathlib cache, and break lemma names.
+`lakefile.toml` and `lake-manifest.json` both pin Mathlib to commit `a2ba36b` (Sept 2026),
+and `lean-toolchain` pins `v4.34.0-rc2`. Do **not** run `lake update` unless deliberately
+bumping Mathlib: change the `rev` in `lakefile.toml` first, and expect the update to
+invalidate the Mathlib cache and break lemma names.
 
 There is no test suite. The two checks that stand in for one:
 
@@ -41,8 +41,9 @@ printf 'import ISRDF\n#print axioms ISRDF.recovery\n' | lake env lean --stdin
 
 The main theorems (`recovery`, `witness_characterization`, `incoherence_recovery`,
 `closure_regimes`, `simple_entailment_recovery`) must depend only on
-`propext, Classical.choice, Quot.sound`. `Classical` enters solely through
-`skolemInv` (Lemma 5), which is `noncomputable` by construction.
+`propext, Classical.choice, Quot.sound`. `Classical.choice` enters through Mathlib's set
+lemmas (`recovery` and `Model.positional` depend on it without using Skolemization) as well
+as through `skolemInv` (Lemma 5), which is `noncomputable` by construction.
 
 Manuscript: `latexmk -pdf manuscript.tex`.
 
