@@ -1,4 +1,4 @@
-# ISRDF — Lean 4 formalization of "Implication-Space Semantics for RDF"
+# Lean 4 formalization of implication-space semantics for RDF"
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 6 Sept 2026),
 in Lean 4 (v4.34.0-rc2) against Mathlib commit `a2ba36b` (Sept 2026). Both files compile with
