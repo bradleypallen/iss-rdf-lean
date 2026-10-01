@@ -5,13 +5,13 @@ import Mathlib.Data.Set.Function
 /-!
 # Implication-Space Semantics for RDF — Lean formalization, Part 1: RDF
 
-Formalization of B. P. Allen, "Implication-Space Semantics for RDF" (draft of 6 Sept 2026).
+Formalization of B. P. Allen, "Implication-Space Semantics for RDF" (draft, 30 September 2026).
 Numbered Definitions/Lemmas/Theorems refer to the note.
 
 Conventions that differ from the note:
 * Graphs are `Set`s of triples rather than finite sets. No proof below uses finiteness
   (the note needs it only for the finitary presentation of the role operations).
-* The vocabulary fragment `N` (Convention 1) is a set of *names* (non-blank terms),
+* The vocabulary fragment `N` (Convention 2) is a set of *names* (non-blank terms),
   not assumed finite.
 * Instance mappings are total functions `Bn → Term`; "a mapping `bnodes(H) → N`" becomes
   the predicate `IMap N H` (in Part 2).

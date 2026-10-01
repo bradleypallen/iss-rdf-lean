@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two artifacts that must stay in sync:
 
-* `manuscript.tex` — B. P. Allen, *Implication-Space Semantics for RDF* (draft, 6 Sept 2026), with `references.bib`.
+* `manuscript.tex` — B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026), with `references.bib`.
 * `ISRDF/` — a Lean 4 formalization of that manuscript's numbered Definitions, Lemmas, Theorems, Propositions and Corollaries.
 
 Every Lean declaration is docstring-tagged with the manuscript item it formalizes
