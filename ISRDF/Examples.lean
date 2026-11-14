@@ -20,6 +20,8 @@ types are instantiated only in `E0_instance_nat`, which exhibits one closed inst
 * **Example 3.**  `cautious_monotony_fails` (entry `X p Y |~ X q Y unless X q X`) and
   `cut_fails` (entries `X p Y |~ X q Y` and `X q Y |~ X r Y`), each also stated for the
   base relation (`cautious_monotony_fails_rel`, `cut_fails_rel`).
+* **Example 2.**  `redundant_bnode_not_inert` (entry `X p Y |~ Y q Y unless Y p Y`): two
+  graphs that simply entail each other have consequences that do not.
 -/
 
 set_option autoImplicit false
@@ -557,6 +559,90 @@ theorem cut_fails_rel (hp : p ∈ V) (hq : q ∈ V) (hr : r ∈ V) (hpq : p ≠ 
       ¬ ((CutBase hp hq hr).base N).rel {tri a p c} {tri a r c} := by
   rw [rel_singleton, rel_singleton, rel_singleton]
   exact cut_fails hp hq hr hpq hqr hpr a c
+
+/-! ## Example 2: redundant blank-node triples are not inert -/
+
+/-- The schema `X p Y |~ Y q Y unless Y p Y`. -/
+def sInert (p q : Iri) : Schema Iri :=
+  ⟨p, ⟨Slot.snd, Slot.const q, Slot.snd⟩, {⟨Slot.snd, Slot.const p, Slot.snd⟩}⟩
+
+theorem sInert_over (hp : p ∈ V) (hq : q ∈ V) :
+    ∀ s ∈ ({sInert p q} : Set (Schema Iri)), s.Over V := by
+  intro s hs
+  rw [Set.mem_singleton_iff.1 hs]
+  refine ⟨hp, inV_terms trivial hq trivial, ?_⟩
+  intro d hd
+  rw [Set.mem_singleton_iff.1 hd]
+  exact inV_terms trivial hp trivial
+
+/-- The base of `X p Y |~ Y q Y unless Y p Y` over the empty regime. -/
+abbrev InertBase (hp : p ∈ V) (hq : q ∈ V) : ConsBase Iri Lit Bn V :=
+  schemaBase {sInert p q} (sInert_over hp hq)
+
+theorem mem_cons_Inert (hp : p ∈ V) (hq : q ∈ V) {K : Graph Iri Lit Bn}
+    {t : Triple (Term Iri Lit Bn)} :
+    t ∈ (InertBase hp hq).cons K ↔
+      t ∈ K ∨ ∃ x y, tri x p y ∈ K ∧ tri y p y ∉ K ∧ t = tri y q y := by
+  rw [mem_cons_schema]
+  constructor
+  · rintro (h | ⟨s, hs, x, y, hprem, hdef, rfl⟩)
+    · exact Or.inl h
+    · rw [Set.mem_singleton_iff.1 hs] at hprem hdef ⊢
+      exact Or.inr ⟨x, y, hprem, hdef _ (Set.mem_singleton _), rfl⟩
+  · rintro (h | ⟨x, y, hprem, hdef, rfl⟩)
+    · exact Or.inl h
+    · refine Or.inr ⟨sInert p q, Set.mem_singleton _, x, y, hprem, ?_, rfl⟩
+      intro d hd
+      rw [Set.mem_singleton_iff.1 hd]
+      exact hdef
+
+/-- **Example 2 (Redundant blank-node triples are not inert).** With the entry
+`X p Y |~ Y q Y unless Y p Y`: the graphs `G1 = {a p a}` and `G2 = {a p a, a p _:b}`
+simply entail each other, yet `Cons(G2)` simply entails `{_:b' q _:b'}` and `Cons(G1)` does
+not.  The triple `a p _:b` is redundant for simple entailment and still triggers a default,
+because `_:b` is read as a constant and `_:b p _:b` is absent. -/
+theorem redundant_bnode_not_inert (hp : p ∈ V) (hq : q ∈ V) (hpq : p ≠ q)
+    {a : Term Iri Lit Bn} (ha : a.IsName) (b b' : Bn) :
+    SimpleEntails ({tri a p a} : Graph Iri Lit Bn) {tri a p a, tri a p (Term.bnode b)} ∧
+      SimpleEntails ({tri a p a, tri a p (Term.bnode b)} : Graph Iri Lit Bn) {tri a p a} ∧
+      SimpleEntails ((InertBase hp hq).cons {tri a p a, tri a p (Term.bnode b)})
+        {tri (Term.bnode b') q (Term.bnode b')} ∧
+      ¬ SimpleEntails ((InertBase hp hq).cons {tri a p a})
+        {tri (Term.bnode b') q (Term.bnode b')} := by
+  have hsa : Term.subst (fun _ : Bn => a) a = a := Term.subst_of_isName _ ha
+  have hba : Term.bnode b ≠ a := by
+    intro h
+    rw [← h] at ha
+    exact ha
+  refine ⟨⟨fun _ => a, ?_⟩, ⟨fun _ => a, ?_⟩, ⟨fun _ => Term.bnode b, ?_⟩, ?_⟩
+  · rintro _ ⟨t, ht, rfl⟩
+    rcases Set.mem_insert_iff.1 ht with ht | ht
+    · rw [ht]
+      show tri (Term.subst (fun _ : Bn => a) a) p (Term.subst (fun _ : Bn => a) a) ∈
+        ({tri a p a} : Graph Iri Lit Bn)
+      rw [hsa]
+      exact Set.mem_singleton _
+    · rw [Set.mem_singleton_iff.1 ht]
+      show tri (Term.subst (fun _ : Bn => a) a) p a ∈ ({tri a p a} : Graph Iri Lit Bn)
+      rw [hsa]
+      exact Set.mem_singleton _
+  · rw [Graph.inst_of_ground _ _ (ground_singleton ha ha)]
+    exact Set.singleton_subset_iff.2 (Set.mem_insert _ _)
+  · rintro _ ⟨t, ht, rfl⟩
+    rw [Set.mem_singleton_iff.1 ht]
+    refine (mem_cons_Inert hp hq).2 (Or.inr ⟨a, Term.bnode b,
+      Set.mem_insert_of_mem _ (Set.mem_singleton _), ?_, rfl⟩)
+    intro h
+    rcases Set.mem_insert_iff.1 h with h | h
+    · exact hba (tri_inj.1 h).1
+    · exact hba (tri_inj.1 (Set.mem_singleton_iff.1 h)).1
+  · rintro ⟨μ, hμ⟩
+    have h : tri (μ b') q (μ b') ∈ (InertBase hp hq).cons {tri a p a} :=
+      hμ ⟨tri (Term.bnode b') q (Term.bnode b'), Set.mem_singleton _, rfl⟩
+    rcases (mem_cons_Inert hp hq).1 h with h | ⟨x, y, hprem, hdef, -⟩
+    · exact hpq (tri_inj.1 (Set.mem_singleton_iff.1 h)).2.1.symm
+    · rw [(tri_inj.1 (Set.mem_singleton_iff.1 hprem)).2.2] at hdef
+      exact hdef (Set.mem_singleton _)
 
 end Examples
 end ISRDF

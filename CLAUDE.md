@@ -9,7 +9,7 @@ Two artifacts that must stay in sync:
 * `manuscript.tex` — B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026), with `references.bib`.
 * `ISRDF/` — a Lean 4 formalization of that manuscript's numbered Definitions, Lemmas, Theorems, Propositions and Corollaries
   (`Rdf.lean`, `Semantics.lean`), plus a nonmonotone extension
-  (`General.lean`, `Entries.lean`, `Examples.lean`).
+  (`General.lean`, `Entries.lean`, `Examples.lean`, `Patterns.lean`).
 
 Every Lean declaration is docstring-tagged with the manuscript item it formalizes
 (`/-- Definition 5: ... -/`, `/-- **Theorem 1 (Recovery).** ... -/`). `README.md` holds the
@@ -31,7 +31,7 @@ and `latexmk -pdf manuscript.tex` to reproduce them.
 
 ```sh
 lake exe cache get          # fetch prebuilt Mathlib oleans (do this before the first build)
-lake build                  # build all five modules
+lake build                  # build all six modules
 lake build ISRDF.Semantics  # build a single module
 lake env lean ISRDF/Rdf.lean   # type-check one file directly, full error output
 ```
@@ -72,8 +72,8 @@ grep -ac 'Overfull \\hbox' manuscript.log          # cosmetic; a few are expecte
 
 ## Architecture
 
-`ISRDF.lean` is a bare re-export of five modules. The manuscript's content is two of them,
-layered; the nonmonotone extension (below) is three more on top:
+`ISRDF.lean` is a bare re-export of six modules. The manuscript's content is two of them,
+layered; the nonmonotone extension (below) is four more on top:
 
 **`ISRDF/Rdf.lean` (§2) — syntax and entailment regimes.** `Term`/`Triple`/`Graph` over three
 abstract carrier types `Iri Lit Bn` (every result is parametric in them; the only
@@ -113,7 +113,7 @@ their composition; `simple_entailment_recovery` (Cor 1) instantiates it at `empt
 
 ### The nonmonotone extension
 
-Three further modules, each importing the previous one. They add declarations only; nothing
+Four further modules, each importing the previous one. They add declarations only; nothing
 in `Rdf.lean` or `Semantics.lean` was changed for them, and they should stay that way.
 
 **`ISRDF/General.lean` — the general theorem.** `ConsBase` is a base given by a consequence
@@ -138,8 +138,22 @@ layer 2.
 **`ISRDF/Examples.lean` — examples and counterexamples**, in the namespace
 `ISRDF.Examples`. `Schema` and `schemaEntries` turn two-variable entry patterns
 `X p Y |~ c unless d₁, …` into an `Entries`. On top of that: a nonmonotone instance
-(`E0_nonmonotone`), Definition 11 against the Skolem reading (`E0_def11_vs_skolem`), and the
-failures of Cautious Monotony and Cut (`cautious_monotony_fails`, `cut_fails`).
+(`E0_nonmonotone`), Definition 11 against the Skolem reading (`E0_def11_vs_skolem`), the
+failures of Cautious Monotony and Cut (`cautious_monotony_fails`, `cut_fails`), and
+redundant blank-node triples not being inert (`redundant_bnode_not_inert`). The schema
+layer here is a special case of the pattern layer in `Patterns.lean`; it is kept because
+the examples are stated on it.
+
+**`ISRDF/Patterns.lean` — pattern entries and pattern rules.** `PTerm` is a variable, an
+IRI constant or a literal constant; `PEntry` has any number of premise patterns, an
+optional conclusion, defeater patterns that may use variables not in the premises (read
+existentially), and a guard on substitutions. `patternEntries` proves that the ground
+instances of well-formed pattern entries (`PEntry.WF`) form an `Entries`, and
+`patternRegime` that the ground instances of well-formed pattern rules form a `Regime`.
+`PEntry.applies_inst_iff` says when an instance fires: premises matched in `K`, and no
+defeater matched in `K` by an extension of the premise bindings. The namespace
+`ISRDF.Shapes` instantiates the layer at the shapes of the Wikidata case study
+(`typeEntry`, `excEntry`, `contempEntry`, `caseRegime`, `caseBase`).
 
 Structural points for the extension:
 
@@ -157,6 +171,13 @@ Structural points for the extension:
 7. **Defaults are drawn in one pooled round.** Entries never see each other's conclusions,
    so `cons` is not idempotent and Cut fails even with no defeaters (`cut_fails`). Do not
    "fix" this by iterating `dstar`; it is the definition.
+8. **Pattern well-formedness is four conditions, and guards are the delicate one.** IRI
+   constants of premises and defeaters lie in `V`; each conclusion term occurs in the
+   premises or is an IRI in `V`; the guard's projection onto the premise variables is
+   `GuardInvariant`. A new guard form needs an invariance proof: comparisons of literal
+   values and `X ≠ Y` on premise variables are invariant, a test for a blank node or for a
+   particular IRI outside `V` is not (`not_guardInvariant_isBnode`). Pattern rules cannot
+   carry `X ≠ Y` at all, because `Regime.uniform` closes under maps that merge terms.
 
 ## Conventions in the Lean sources
 
@@ -178,12 +199,9 @@ tables, and for Cor. 2 also depends on an external completeness result
 
 In the nonmonotone extension, not formalized:
 
-* Pattern entries in general. `Examples.schemaEntries` covers one fragment (one premise
-  `X p Y`, defeaters with no variables of their own, no guards). That a pattern entry with
-  existential defeater variables or guards generates a set satisfying `Entries.uniform` is
-  argued on paper only.
-* The counterexample "redundant blank-node triples are not inert" (`G1 = {a p a}`,
-  `G2 = {a p a, a p _:x}`, entry `X p Y |~ Y q Y unless Y p Y`).
+* Necessity of the pattern well-formedness conditions. `patternEntries` proves they are
+  sufficient; that each is needed is argued on paper only.
+* Guards on pattern rules.
 * A fit-models version of part (P): `incoherent_iff_inc` is stated in the Herbrand model,
   as Proposition 2 is.
 * `manuscript.tex` has no text yet for any item of the extension.

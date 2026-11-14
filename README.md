@@ -1,7 +1,7 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All five files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All six files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
@@ -62,6 +62,18 @@ lemma names.
 | **Example 3 (Cautious Monotony fails)**, entry `X p Y \|~ X q Y unless X q X` | `cautious_monotony_fails`, `cautious_monotony_fails_rel` | Examples.lean |
 | **Example 3 (Cut fails)**, entries `X p Y \|~ X q Y`, `X q Y \|~ X r Y` | `cut_fails`, `cut_fails_rel` | Examples.lean |
 | Single conclusions: the base relation is membership in `Cons` | `rel_singleton` | Examples.lean |
+| **Example 2 (Redundant blank-node triples are not inert)**, entry `X p Y \|~ Y q Y unless Y p Y` | `redundant_bnode_not_inert`, `sInert`, `InertBase`, `mem_cons_Inert` | Examples.lean |
+| Pattern terms, triple patterns, instantiation | `PTerm`, `PTerm.eval`, `PTerm.Const`, `PTriple`, `PGraph`, `PGraph.inst`, `PGraph.vars`, `PGraph.Over`, `PGraph.mapT_inst`, `PGraph.inst_congr` | Patterns.lean |
+| Pattern entries `⟨A, c; E⟩` with a guard; ground instances; well-formedness | `PEntry`, `PEntry.inst`, `PEntry.WF`, `ConclOK`, `PEntry.applies_inst_iff` | Patterns.lean |
+| **Pattern entries form an `Entries`** | `patternEntries`, `mem_patternEntries` | Patterns.lean |
+| Invariant guards: closure under ∧, ∨, projection; literal comparisons; literal view; `X ≠ Y`; `X ≠ k` | `GuardInvariant`, `projGuard`, `GuardInvariant.and`, `GuardInvariant.or`, `GuardInvariant.mono`, `GuardInvariant.proj`, `litGuard`, `guardInvariant_lit`, `Term.litView`, `guardInvariant_litView`, `neGuard`, `guardInvariant_ne`, `neConstGuard`, `guardInvariant_neConst` | Patterns.lean |
+| A blank-node test is not an invariant guard | `not_guardInvariant_isBnode` | Patterns.lean |
+| **Pattern rules form a `Regime`** | `PRule`, `PRule.inst`, `PRule.WF`, `patternRegime` | Patterns.lean |
+| Entries base over the empty regime | `emptyRegime_entriesBase_cons`, `emptyRegime_entriesBase_inc` | Patterns.lean |
+| Shape (a): incompatibility with several defeaters; lost incoherence | `Shapes.typeEntry`, `Shapes.typeEntry_wf`, `Shapes.type_incoherence_lost` | Patterns.lean |
+| Shape (b): defeater with an existential variable; a concrete defeat | `Shapes.excEntry`, `Shapes.excEntry_wf`, `Shapes.exc_defeat` | Patterns.lean |
+| Shape (c): several premises with a literal guard | `Shapes.contempEntry`, `Shapes.contempEntry_wf`, `Shapes.contemp_inc_iff` | Patterns.lean |
+| The case-study regime (two rules) and its base | `Shapes.subTransRule`, `Shapes.instUpRule`, `Shapes.caseRegime`, `Shapes.caseBase` | Patterns.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the
