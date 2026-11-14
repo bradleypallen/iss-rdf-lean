@@ -1,11 +1,11 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0-rc2) against Mathlib commit `a2ba36b` (Sept 2026). Both files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All five files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
-Mathlib to commit `a2ba36b`; do not run `lake update`, which would move Mathlib and break
+Mathlib to commit `5ed2965`; do not run `lake update`, which would move Mathlib and break
 lemma names.
 
 ## Where each result lives
@@ -37,6 +37,31 @@ lemma names.
 | **Prop 2 (Incoherence recovery)** | `incoherence_recovery` | Semantics.lean |
 | **Theorem 2 (Closure regimes)** | `closure_regimes`, `fitEnt_independent_of_N` | Semantics.lean |
 | Corollary 1 (Simple RDF entailment) | `simple_entailment_recovery`, `simple_entailment_recovery_std` | Semantics.lean |
+| Renaming of a graph over `V` | `Renames`, `Renames.of_terms_subset` | General.lean, Entries.lean |
+| Base given by `Cons` and incoherence (Containment, no new terms, invariance under renamings; prime by construction) | `ConsBase`, `ConsBase.base`, `ConsBase.mem_frame_iff` | General.lean |
+| Lemma 5 (Skolemization), with both round trips | `SkolemPair`, `exists_skolemPair` | General.lean |
+| Lemma 4 (Witness coordinate), for any `X` over the terms of `G` and `V` | `witness_coordinate'` | General.lean |
+| General theorem in the Herbrand model (counterpart of Lemma 7; needs `N` nonempty) | `ConsBase.witness_characterization` | General.lean |
+| **General theorem, part (P)** (counterpart of Prop 2) | `ConsBase.incoherent_iff_inc` | General.lean |
+| **General theorem, part (T)** | `ConsBase.general` | General.lean |
+| **General theorem, part (I)** | `ConsBase.general_independent`, `ConsBase.incoherent_independent` | General.lean |
+| Regime base without explosion; agreement with Theorem 2 on `R`-consistent graphs | `Regime.consBase`, `Regime.fitEnt_skolem_iff` | General.lean |
+| Lemma 6 with equality, for renamings | `Regime.mapT_clPos`, `Regime.renames_clPos` | Entries.lean |
+| One round of defaults over a regime (abstract) | `DefaultStep`, `DefaultStep.empty`, `Regime.consBaseOf`, `Regime.consBaseOf_empty_cons`, `Regime.consBaseOf_empty_inc` | Entries.lean |
+| Entries `⟨A, c; E⟩`, application, `D*`, incompatibility | `Entry`, `Entry.Applies`, `Entries`, `Entries.dstar`, `Entries.Incompat`, `Entries.applies_map`, `Entries.step` | Entries.lean |
+| **Lemma A** (the entries base satisfies the hypotheses of the general theorem) | `Regime.entriesBase`, `Regime.entriesBase_cons`, `Regime.entriesBase_inc` | Entries.lean |
+| General theorem at the entries base, parts (T) and (P) | `Regime.entries_general`, `Regime.entries_incoherent_iff` | Entries.lean |
+| **Property 1 (Defeat witness)** | `Regime.defeat_witness` | Entries.lean |
+| **Property 2 (Materialization)** | `Regime.consBaseOf_cons_union`, `Regime.consBaseOf_inc_union`, `Regime.clPos_union_of_subset`, `Regime.inconsistent_union_iff` | Entries.lean |
+| **Property 1, counterpart for incoherence (Lost incoherence)** | `Regime.incoherence_witness` | Entries.lean |
+| Two-variable entry schemas `X p Y \|~ c unless d₁, …` and their ground instances as an `Entries` | `Slot`, `Schema`, `Schema.Over`, `Schema.inst`, `schemaEntries`, `schemaBase`, `mem_cons_schema` | Examples.lean |
+| Example 1: the entry set `X p Y \|~ X q X unless X p X` | `s0`, `E0`, `E0base`, `mem_cons_E0` | Examples.lean |
+| **Example 1a (Nonmonotone)** | `E0_nonmonotone` | Examples.lean |
+| **Example 1b (Definition 11 against the Skolem reading)** | `E0_def11_vs_skolem`, `E0_skolem_side`, `E0_def11_side_fails` | Examples.lean |
+| Example 1b, hypotheses satisfiable; one closed instance | `E0_admissible`, `E0_def11_vs_skolem_exists`, `E0_instance_nat` | Examples.lean |
+| **Example 3 (Cautious Monotony fails)**, entry `X p Y \|~ X q Y unless X q X` | `cautious_monotony_fails`, `cautious_monotony_fails_rel` | Examples.lean |
+| **Example 3 (Cut fails)**, entries `X p Y \|~ X q Y`, `X q Y \|~ X r Y` | `cut_fails`, `cut_fails_rel` | Examples.lean |
+| Single conclusions: the base relation is membership in `Cons` | `rel_singleton` | Examples.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the

@@ -7,12 +7,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two artifacts that must stay in sync:
 
 * `manuscript.tex` — B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026), with `references.bib`.
-* `ISRDF/` — a Lean 4 formalization of that manuscript's numbered Definitions, Lemmas, Theorems, Propositions and Corollaries.
+* `ISRDF/` — a Lean 4 formalization of that manuscript's numbered Definitions, Lemmas, Theorems, Propositions and Corollaries
+  (`Rdf.lean`, `Semantics.lean`), plus a nonmonotone extension
+  (`General.lean`, `Entries.lean`, `Examples.lean`).
 
 Every Lean declaration is docstring-tagged with the manuscript item it formalizes
 (`/-- Definition 5: ... -/`, `/-- **Theorem 1 (Recovery).** ... -/`). `README.md` holds the
 authoritative note→Lean cross-reference table. **When a definition or a statement changes on
 either side, update the other side and the README table.**
+
+The nonmonotone extension is ahead of the manuscript: its items (the general theorem,
+Lemma A, Properties 1 and 2, the examples) have **no manuscript numbers yet** and are tagged
+by name in the docstrings and in the README table. When the manuscript gains those items,
+replace the names with numbers on both sides. `Claude outputs/handoff/` holds the working
+notes for that extension (`HANDOFF.md`, `RESULT.md`, check logs); it is not part of either
+artifact.
 
 Only source is tracked: `.lake/` (8.4 GB of Mathlib oleans), the LaTeX aux files, and
 `manuscript.pdf` are all gitignored, so a fresh clone needs `lake exe cache get && lake build`
@@ -22,13 +31,14 @@ and `latexmk -pdf manuscript.tex` to reproduce them.
 
 ```sh
 lake exe cache get          # fetch prebuilt Mathlib oleans (do this before the first build)
-lake build                  # build both modules
+lake build                  # build all five modules
 lake build ISRDF.Semantics  # build a single module
 lake env lean ISRDF/Rdf.lean   # type-check one file directly, full error output
 ```
 
-`lakefile.toml` and `lake-manifest.json` both pin Mathlib to commit `a2ba36b` (Sept 2026),
-and `lean-toolchain` pins `v4.34.0-rc2`. Do **not** run `lake update` unless deliberately
+`lakefile.toml` and `lake-manifest.json` both pin Mathlib to commit `5ed2965` (tag `v4.34.0`,
+Sept 2026), and `lean-toolchain` pins `v4.34.0`. (Do not go back to `v4.34.0-rc2`: its `lake`
+crashes on macOS 27, leanprover/lean4#15087.) Do **not** run `lake update` unless deliberately
 bumping Mathlib: change the `rev` in `lakefile.toml` first, and expect the update to
 invalidate the Mathlib cache and break lemma names.
 
@@ -40,7 +50,9 @@ printf 'import ISRDF\n#print axioms ISRDF.recovery\n' | lake env lean --stdin
 ```
 
 The main theorems (`recovery`, `witness_characterization`, `incoherence_recovery`,
-`closure_regimes`, `simple_entailment_recovery`) must depend only on
+`closure_regimes`, `simple_entailment_recovery`, and in the extension `ConsBase.general`,
+`ConsBase.incoherent_iff_inc`, `Regime.entries_general`, `Regime.defeat_witness`,
+`Regime.incoherence_witness`, `Regime.consBaseOf_cons_union`) must depend only on
 `propext, Classical.choice, Quot.sound`. `Classical.choice` enters through Mathlib's set
 lemmas (`recovery` and `Model.positional` depend on it without using Skolemization) as well
 as through `skolemInv` (Lemma 5), which is `noncomputable` by construction.
@@ -60,10 +72,12 @@ grep -ac 'Overfull \\hbox' manuscript.log          # cosmetic; a few are expecte
 
 ## Architecture
 
-`ISRDF.lean` is a bare re-export. Real content is two modules, layered:
+`ISRDF.lean` is a bare re-export of five modules. The manuscript's content is two of them,
+layered; the nonmonotone extension (below) is three more on top:
 
 **`ISRDF/Rdf.lean` (§2) — syntax and entailment regimes.** `Term`/`Triple`/`Graph` over three
-abstract carrier types `Iri Lit Bn` (never instantiated; every result is parametric in them).
+abstract carrier types `Iri Lit Bn` (every result is parametric in them; the only
+instantiation anywhere is the closed example `Examples.E0_instance_nat`).
 `Graph` is `Set (Triple (Term ..))`. Instance mappings are *total* `Bn → Term`, applied via
 `Graph.inst`; `Graph.mapT` is the more general pointwise map used for regime uniformity.
 `Regime` bundles a rule set with its range-restriction and uniformity proofs as structure
@@ -97,9 +111,56 @@ The proof spine: `recovery` (Thm 1) reduces fit-model entailment to the Herbrand
 `skolemization` (Lemma 5) and `witness_coordinate` (Lemma 4); `closure_regimes` (Thm 2) is
 their composition; `simple_entailment_recovery` (Cor 1) instantiates it at `emptyRegime`.
 
+### The nonmonotone extension
+
+Three further modules, each importing the previous one. They add declarations only; nothing
+in `Rdf.lean` or `Semantics.lean` was changed for them, and they should stay that way.
+
+**`ISRDF/General.lean` — the general theorem.** `ConsBase` is a base given by a consequence
+function `cons` and an incoherence predicate `inc`, assumed only to satisfy Containment, no
+new terms, and invariance under renamings. `ConsBase.base` is the non-exploding base
+(`Δ` meets `cons Γ`, or `Δ = ∅` and `inc Γ`). A graph in antecedent position is read through
+its Skolemization `G.inst νsk`; `SkolemPair` packages Lemma 5 with both round trips.
+`ConsBase.general` (part T), `ConsBase.incoherent_iff_inc` (part P) and
+`ConsBase.general_independent` (part I) are the counterparts of Theorem 2, Proposition 2
+and `fitEnt_independent_of_N`. The proof is `recovery` applied to the ground graph
+`G.inst νsk`, then `ConsBase.witness_characterization`.
+
+**`ISRDF/Entries.lean` — regimes with defeasible entries.** Two layers. Layer 1:
+`DefaultStep` is one round of defaults as an arbitrary function `dstar` of the closure, and
+`Regime.consBaseOf` turns a regime plus a step into a `ConsBase`
+(`cons X = clPos (clPos X ∪ dstar (clPos X))`). Layer 2: `Entry` and `Entries` are ground
+entries `⟨A, c; E⟩`; `Entries.step` is their `DefaultStep` and `Regime.entriesBase` is
+Lemma A. Property 2 (`consBaseOf_cons_union`, `consBaseOf_inc_union`) is proved at layer 1;
+Property 1 (`defeat_witness`) and its incoherence counterpart (`incoherence_witness`) at
+layer 2.
+
+**`ISRDF/Examples.lean` — examples and counterexamples**, in the namespace
+`ISRDF.Examples`. `Schema` and `schemaEntries` turn two-variable entry patterns
+`X p Y |~ c unless d₁, …` into an `Entries`. On top of that: a nonmonotone instance
+(`E0_nonmonotone`), Definition 11 against the Skolem reading (`E0_def11_vs_skolem`), and the
+failures of Cautious Monotony and Cut (`cautious_monotony_fails`, `cut_fails`).
+
+Structural points for the extension:
+
+4. **Invariance is under renamings, not under arbitrary maps fixing `L ∪ V`.**
+   `Renames V ρ X` says `ρ` is undone on the terms of `X` by another map fixing `L ∪ V`.
+   `Regime.uniform` closes under all such maps, which is right for rules and wrong for
+   entries: defeat is not preserved by maps that merge terms. For the same reason
+   `Regime.mapT_clPos` (equality) needs `Renames`, while `clPos_map` (inclusion) does not.
+5. **`cons` is not assumed monotone, and `dstar` is not monotone.** In `cons_map` you cannot
+   pass from `dstar (mapT ρ K)` to `dstar` of a superset; go through the equality
+   `mapT_clPos`. Monotonicity lemmas (`clPos_mono`) apply to the closure only.
+6. **`N.Nonempty` is a hypothesis of the general theorem** and has no counterpart in
+   Theorem 2: without explosion, an empty `N` and a succedent with blank nodes leave the
+   succedent family empty.
+7. **Defaults are drawn in one pooled round.** Entries never see each other's conclusions,
+   so `cons` is not idempotent and Cut fails even with no defeaters (`cut_fails`). Do not
+   "fix" this by iterating `dstar`; it is the definition.
+
 ## Conventions in the Lean sources
 
-* `set_option autoImplicit false` at the top of both files — declare every variable.
+* `set_option autoImplicit false` at the top of every file — declare every variable.
 * Finiteness is dropped throughout: graphs and the name set `N` are arbitrary `Set`s. No
   proof needs finiteness. Do not reintroduce `Finset`.
 * `Admissible N G H V` (Def 12) is the standing hypothesis for Lemma 7 onward, chiefly for
@@ -114,3 +175,15 @@ Corollaries 2–3 of the manuscript (RDFS, OWL 2 RL) are **not** formalized. The
 instantiations of Theorem 2 at concrete rule tables; formalizing them means encoding those
 tables, and for Cor. 2 also depends on an external completeness result
 (Hayes & Patel-Schneider App. A / ter Horst Thm 4.12).
+
+In the nonmonotone extension, not formalized:
+
+* Pattern entries in general. `Examples.schemaEntries` covers one fragment (one premise
+  `X p Y`, defeaters with no variables of their own, no guards). That a pattern entry with
+  existential defeater variables or guards generates a set satisfying `Entries.uniform` is
+  argued on paper only.
+* The counterexample "redundant blank-node triples are not inert" (`G1 = {a p a}`,
+  `G2 = {a p a, a p _:x}`, entry `X p Y |~ Y q Y unless Y p Y`).
+* A fit-models version of part (P): `incoherent_iff_inc` is stated in the Herbrand model,
+  as Proposition 2 is.
+* `manuscript.tex` has no text yet for any item of the extension.
