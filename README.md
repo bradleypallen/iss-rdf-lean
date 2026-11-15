@@ -1,7 +1,7 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All six files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All seven files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
@@ -74,6 +74,18 @@ lemma names.
 | Shape (b): defeater with an existential variable; a concrete defeat | `Shapes.excEntry`, `Shapes.excEntry_wf`, `Shapes.exc_defeat` | Patterns.lean |
 | Shape (c): several premises with a literal guard | `Shapes.contempEntry`, `Shapes.contempEntry_wf`, `Shapes.contemp_inc_iff` | Patterns.lean |
 | The case-study regime (two rules) and its base | `Shapes.subTransRule`, `Shapes.instUpRule`, `Shapes.caseRegime`, `Shapes.caseBase` | Patterns.lean |
+| A ground antecedent is one pair (Definition 11 reduces to Definition 10) | `Admissible.inst_ground`, `Model.biUnion_inst_of_ground`, `Model.gEnt_ground_iff`, `Model.incoherent_ground_iff` | Bridge.lean |
+| Definition 11 gives the Skolem reading, in every model and for every base | `Model.gEnt_inst_of_gEnt`, `Model.incoherent_inst_of_incoherent`, `fitEnt_inst_of_fitEnt` | Bridge.lean |
+| Base given by `Cons` and incoherence, with an explosion flag `e`; `e := False` is `ConsBase.base` | `ConsBase.baseWith`, `ConsBase.baseWith_false`, `ConsBase.mem_frame_with_iff`, `Base.ext_rel` | Bridge.lean |
+| **General theorem with or without explosion**, parts (T) and (P) and the Herbrand form (needs `e ∨ N.Nonempty`) | `ConsBase.general_with`, `ConsBase.incoherent_iff_inc_with`, `ConsBase.witness_characterization_with` | Bridge.lean |
+| The `General.lean` results as the case `e := False` | `ConsBase.general_of_with`, `ConsBase.incoherent_iff_inc_of_with`, `ConsBase.witness_characterization_of_with` | Bridge.lean |
+| Base monotone and invariant under instance mappings | `ConsBase.InstMonotone`, `Regime.consBase_instMonotone` | Bridge.lean |
+| "If" halves of Lemma 7 and Prop 2 on such a base (no Skolemization, no condition on `N`) | `ConsBase.InstMonotone.gEnt_of_cons`, `ConsBase.InstMonotone.incoherent_of_inc` | Bridge.lean |
+| **The bridge**: on such a base, Definition 11 and the Skolem reading of the antecedent agree | `ConsBase.InstMonotone.gEnt_iff_skolem`, `ConsBase.InstMonotone.incoherent_iff_skolem`, `ConsBase.InstMonotone.fitEnt_iff_skolem` | Bridge.lean |
+| General theorem with Definition 11 in antecedent position, on such a base | `ConsBase.InstMonotone.general_def11`, `ConsBase.InstMonotone.incoherent_def11` | Bridge.lean |
+| `B_R` is the exploding base of `cl_R` and `R`-inconsistency; the bridge over `B_R` on every graph (no consistency hypothesis) | `Regime.base_eq_baseWith`, `Regime.fitEnt_iff_skolem` | Bridge.lean |
+| **Theorem 2 and Prop 2 re-derived from the general theorem** (same statements; proofs do not use Lemma 7, Prop 2, Lemma 4 or Lemma 5 of Semantics.lean) | `closure_regimes_of_general`, `incoherence_recovery_of_general` | Bridge.lean |
+| Lemmas 4 and 5 as special cases of their General.lean forms | `witness_coordinate_of_general`, `skolemization_of_skolemPair` | Bridge.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the

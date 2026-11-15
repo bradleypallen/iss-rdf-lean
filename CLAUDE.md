@@ -9,7 +9,8 @@ Two artifacts that must stay in sync:
 * `manuscript.tex` — B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026), with `references.bib`.
 * `ISRDF/` — a Lean 4 formalization of that manuscript's numbered Definitions, Lemmas, Theorems, Propositions and Corollaries
   (`Rdf.lean`, `Semantics.lean`), plus a nonmonotone extension
-  (`General.lean`, `Entries.lean`, `Examples.lean`, `Patterns.lean`).
+  (`General.lean`, `Entries.lean`, `Examples.lean`, `Patterns.lean`) and a module that
+  joins the two proof chains (`Bridge.lean`).
 
 Every Lean declaration is docstring-tagged with the manuscript item it formalizes
 (`/-- Definition 5: ... -/`, `/-- **Theorem 1 (Recovery).** ... -/`). `README.md` holds the
@@ -31,7 +32,7 @@ and `latexmk -pdf manuscript.tex` to reproduce them.
 
 ```sh
 lake exe cache get          # fetch prebuilt Mathlib oleans (do this before the first build)
-lake build                  # build all six modules
+lake build                  # build all seven modules
 lake build ISRDF.Semantics  # build a single module
 lake env lean ISRDF/Rdf.lean   # type-check one file directly, full error output
 ```
@@ -52,7 +53,9 @@ printf 'import ISRDF\n#print axioms ISRDF.recovery\n' | lake env lean --stdin
 The main theorems (`recovery`, `witness_characterization`, `incoherence_recovery`,
 `closure_regimes`, `simple_entailment_recovery`, and in the extension `ConsBase.general`,
 `ConsBase.incoherent_iff_inc`, `Regime.entries_general`, `Regime.defeat_witness`,
-`Regime.incoherence_witness`, `Regime.consBaseOf_cons_union`) must depend only on
+`Regime.incoherence_witness`, `Regime.consBaseOf_cons_union`, and in `Bridge.lean`
+`ConsBase.general_with`, `ConsBase.InstMonotone.fitEnt_iff_skolem`,
+`closure_regimes_of_general`, `incoherence_recovery_of_general`) must depend only on
 `propext, Classical.choice, Quot.sound`. `Classical.choice` enters through Mathlib's set
 lemmas (`recovery` and `Model.positional` depend on it without using Skolemization) as well
 as through `skolemInv` (Lemma 5), which is `noncomputable` by construction.
@@ -72,8 +75,9 @@ grep -ac 'Overfull \\hbox' manuscript.log          # cosmetic; a few are expecte
 
 ## Architecture
 
-`ISRDF.lean` is a bare re-export of six modules. The manuscript's content is two of them,
-layered; the nonmonotone extension (below) is four more on top:
+`ISRDF.lean` is a bare re-export of seven modules. The manuscript's content is two of them,
+layered; the nonmonotone extension (below) is four more on top; `Bridge.lean` (last
+subsection) joins the two proof chains:
 
 **`ISRDF/Rdf.lean` (§2) — syntax and entailment regimes.** `Term`/`Triple`/`Graph` over three
 abstract carrier types `Iri Lit Bn` (every result is parametric in them; the only
@@ -178,6 +182,49 @@ Structural points for the extension:
    values and `X ≠ Y` on premise variables are invariant, a test for a blank node or for a
    particular IRI outside `V` is not (`not_guardInvariant_isBnode`). Pattern rules cannot
    carry `X ≠ Y` at all, because `Regime.uniform` closes under maps that merge terms.
+
+### One spine for both cases
+
+**`ISRDF/Bridge.lean` — the monotone case as a corollary of the general theorem.** Imports
+`General.lean` only and adds declarations only. `Semantics.lean` proves Theorem 2 with
+Definition 11 on both sides and explosion; `General.lean` proves the general theorem with
+the Skolem reading of the antecedent and no explosion. This module makes one chain of them:
+
+* `ConsBase.baseWith e` is the base of `cons` and `inc` with an explosion flag `e : Prop`.
+  `e := False` is `ConsBase.base` (`baseWith_false`); `e := True` at a regime is `B_R`
+  (`Regime.base_eq_baseWith`).
+* `ConsBase.general_with`, `incoherent_iff_inc_with` and `witness_characterization_with`
+  are the general theorem for `baseWith e`. The `General.lean` results are the case
+  `e := False` (`general_of_with` and its two companions).
+* `Model.gEnt_inst_of_gEnt` and `fitEnt_inst_of_fitEnt`: Definition 11 gives the Skolem
+  reading in every model, with nothing assumed about the base. It rests on
+  `Model.gEnt_ground_iff` (a ground antecedent is one pair).
+* `ConsBase.InstMonotone` says `cons` and `inc` are monotone and preserved by every
+  instance mapping. On such a base the two readings of the antecedent agree
+  (`InstMonotone.gEnt_iff_skolem`, `fitEnt_iff_skolem`), which gives the general theorem
+  with Definition 11 in antecedent position (`InstMonotone.general_def11`).
+* `closure_regimes_of_general` and `incoherence_recovery_of_general` have the statements of
+  `closure_regimes` and `incoherence_recovery` and are proved from the above
+  (`Regime.consBase_instMonotone`). They do not use `witness_characterization`,
+  `incoherence_recovery`, `witness_coordinate` or `skolemization` from `Semantics.lean`.
+
+The spine: `recovery` (Thm 1) to reach the Herbrand model; the bridge to pass from
+Definition 11 to the Skolemized antecedent; `witness_characterization_with` on the ground
+antecedent. Without `InstMonotone` the bridge holds in one direction only, and
+`Examples.E0_def11_vs_skolem` shows the other direction failing.
+
+Structural points for the bridge:
+
+9. **The hypothesis on `N` is `e ∨ N.Nonempty`.** With explosion `N` may be empty, which is
+   why Theorem 2 has no such hypothesis (point 6); without it `N` must be nonempty.
+10. **`InstMonotone` is strictly stronger than the `ConsBase` fields.** `cons_inst` and
+    `inc_inst` are invariance under every substitution for blank nodes, including ones
+    that merge terms; `ConsBase` assumes invariance under renamings only (point 4). An
+    entries base in general does not satisfy `InstMonotone` (`Examples.E0_nonmonotone`).
+    Do not add it as a `ConsBase` field.
+11. **The originals stay.** `closure_regimes`, `incoherence_recovery` and Lemma 7 in
+    `Semantics.lean` are not replaced by the re-derived versions; the two sets of proofs
+    are kept side by side, and each new statement is definitionally the old one.
 
 ## Conventions in the Lean sources
 
