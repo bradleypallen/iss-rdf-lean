@@ -5,3 +5,5 @@ import ISRDF.Entries
 import ISRDF.Examples
 import ISRDF.Patterns
 import ISRDF.Bridge
+import ISRDF.StandardPatterns
+import ISRDF.NotCumulative
