@@ -1,7 +1,7 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All eleven files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All twelve files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
@@ -98,6 +98,9 @@ lemma names.
 | **The ρdf rules form a `Regime`**: rules (2) to (7), and rules (2), (3) and (4) alone; no graph is inconsistent under either | `RhoDf.rhoRegime`, `RhoDf.mrdfRegime`, `RhoDf.rho_not_inconsistent`, `RhoDf.mrdf_not_inconsistent` | RhoDf.lean |
 | **Theorem 2 for the ρdf rules**, and the same with a schema held fixed, by the ontology-relative corollary | `RhoDf.rho_recovery`, `RhoDf.mrdf_recovery`, `RhoDf.rho_ontology_recovery`, `RhoDf.mrdf_ontology_recovery` | RhoDf.lean |
 | Two checks that the transcribed rules fire: rule (3b), and rule (2b) with a variable as predicate | `RhoDf.mrdf_sc_type`, `RhoDf.mrdf_sp_inherit` | RhoDf.lean |
+| The closure under the instances of rules (2) to (7) all of whose triples have an IRI as predicate (the instances the ρdf paper allows), with each rule as a closure property | `RhoDf.IriPred`, `RhoDf.WCl`, `RhoDf.w2a` to `RhoDf.w7bTy` | RhoDfWellFormed.lean |
+| **The generalized closure adds no triple with an IRI as predicate**, on a graph whose predicates are IRIs; the converse inclusion | `RhoDf.Inv`, `RhoDf.inv_of_cl`, `RhoDf.wcl_of_mem_clPos`, `RhoDf.mem_clPos_of_wcl` | RhoDfWellFormed.lean |
+| **The two closures simply entail the same graphs whose predicates are IRIs**; Theorem 2 for the ρdf rules with the paper's closure | `RhoDf.iriPred_inst`, `RhoDf.simpleEntails_clPos_iff_wcl`, `RhoDf.rho_recovery_wellFormed` | RhoDfWellFormed.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the
@@ -105,8 +108,10 @@ appeal to Hayes & Patel-Schneider App. A / ter Horst Thm 4.12, which is external
 `RhoDf.lean` encodes one such table, that of ρdf. It shows that the rules as transcribed
 form a regime. It does not check the transcription against the paper's table, and it does
 not formalize that paper's theorems relating the rules to RDFS entailment. The paper
-instantiates a rule only where every triple is well formed; the library takes every
-instance over generalized triples.
+instantiates a rule only where every triple is well formed, which for that paper means a
+URI as predicate; the library takes every instance over generalized triples.
+`RhoDfWellFormed.lean` shows that on graphs whose predicates are IRIs the two closures
+simply entail the same graphs.
 
 ## Modelling decisions that differ from the note
 

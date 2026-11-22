@@ -9,3 +9,4 @@ import ISRDF.StandardPatterns
 import ISRDF.NotCumulative
 import ISRDF.OntologyRelative
 import ISRDF.RhoDf
+import ISRDF.RhoDfWellFormed
