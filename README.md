@@ -1,7 +1,7 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All twelve files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All thirteen files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
@@ -101,6 +101,9 @@ lemma names.
 | The closure under the instances of rules (2) to (7) all of whose triples have an IRI as predicate (the instances the ρdf paper allows), with each rule as a closure property | `RhoDf.IriPred`, `RhoDf.WCl`, `RhoDf.w2a` to `RhoDf.w7bTy` | RhoDfWellFormed.lean |
 | **The generalized closure adds no triple with an IRI as predicate**, on a graph whose predicates are IRIs; the converse inclusion | `RhoDf.Inv`, `RhoDf.inv_of_cl`, `RhoDf.wcl_of_mem_clPos`, `RhoDf.mem_clPos_of_wcl` | RhoDfWellFormed.lean |
 | **The two closures simply entail the same graphs whose predicates are IRIs**; Theorem 2 for the ρdf rules with the paper's closure | `RhoDf.iriPred_inst`, `RhoDf.simpleEntails_clPos_iff_wcl`, `RhoDf.rho_recovery_wellFormed` | RhoDfWellFormed.lean |
+| **The regime of the case study is rules (3a) and (3b) of ρdf**: with `ins` as `type` and `sub` as `sc`, the rules of `Shapes.caseRegime` are the ground instances of those two rules as transcribed in `RhoDf.rule` | `RhoDf.subTrans_inst_eq`, `RhoDf.instUp_inst_eq`, `RhoDf.r3a_inst_eq`, `RhoDf.r3b_inst_eq`, `RhoDf.caseRegime_rules` | CaseRegimeRhoDf.lean |
+| The closure under the case study's regime lies inside the closure under rules (2) to (7) | `RhoDf.cl_mono_rules`, `RhoDf.caseOf`, `RhoDf.cl_rho_of_cl_case` | CaseRegimeRhoDf.lean |
+| **On a graph with no triple whose predicate is `sp`, `dom` or `range`, rules (2) to (7) add only triples `a sp a` and `a sc a`** to that closure, the five keywords being distinct; so the two closures have the same `type` triples and the same `sc` triples between different terms | `RhoDf.NoSchemaPred`, `RhoDf.CInv`, `RhoDf.cinv_of_cl_rho`, `RhoDf.case_or_refl_of_cl_rho`, `RhoDf.cl_rho_iff_cl_case`, `RhoDf.cl_rho_type_iff`, `RhoDf.cl_rho_sc_iff` | CaseRegimeRhoDf.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the
@@ -112,6 +115,9 @@ instantiates a rule only where every triple is well formed, which for that paper
 URI as predicate; the library takes every instance over generalized triples.
 `RhoDfWellFormed.lean` shows that on graphs whose predicates are IRIs the two closures
 simply entail the same graphs.
+`CaseRegimeRhoDf.lean` compares two transcriptions in this library, the regime of the
+case study and rules (3a) and (3b) of `RhoDf.rule`. It does not check either against its
+source, and it says nothing about the defaults of the case study.
 
 ## Modelling decisions that differ from the note
 

@@ -10,3 +10,4 @@ import ISRDF.NotCumulative
 import ISRDF.OntologyRelative
 import ISRDF.RhoDf
 import ISRDF.RhoDfWellFormed
+import ISRDF.CaseRegimeRhoDf
