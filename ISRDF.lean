@@ -7,3 +7,4 @@ import ISRDF.Patterns
 import ISRDF.Bridge
 import ISRDF.StandardPatterns
 import ISRDF.NotCumulative
+import ISRDF.OntologyRelative

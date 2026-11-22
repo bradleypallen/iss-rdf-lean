@@ -1,7 +1,7 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All nine files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All ten files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
@@ -92,6 +92,8 @@ lemma names.
 | Right Weakening from ⊥ and Cautious Monotony carry incoherence to every extension by a consequence (abstract form, formulas, sets) | `NotCumulative.bot_persists`, `NotCumulative.klm_false_persists`, `NotCumulative.incoherence_persists`, `NotCumulative.incoherence_persists_list`, `NotCumulative.not_both_of_lost_incoherence` | NotCumulative.lean |
 | **A base with lost incoherence is not cumulative**; which rule fails with explosion and which without | `NotCumulative.not_cumulative`, `NotCumulative.explosion_rwBot`, `NotCumulative.explosion_cm_fails`, `NotCumulative.no_explosion_dichotomy`, `NotCumulative.coherent_not_subset_closed` | NotCumulative.lean |
 | The same at shape (a): with explosion Cautious Monotony fails; without it Right Weakening from ⊥ fails and Cautious Monotony holds | `NotCumulative.typeBase_not_cumulative`, `NotCumulative.typeBase_explosion_cm_fails`, `NotCumulative.typeBase_no_explosion_rw_fails`, `NotCumulative.typeBase_no_explosion_cm_holds` | NotCumulative.lean |
+| The regime `R_O = R ∪ {⟨∅, t⟩ : t ∈ O}` for an ontology `O` all of whose terms are IRIs, as a regime over `V` and the IRIs of `O`; its closure of `X` is the closure under `R` of `X ∪ O` | `Graph.iris`, `Graph.IriOnly`, `Regime.withOntology`, `Regime.cl_withOntology`, `Regime.clPos_withOntology`, `Regime.inconsistent_withOntology` | OntologyRelative.lean |
+| **Corollary (Ontology-relative regimes)**, for an ontology without literals, from Theorem 2; its counterpart for incoherence, from Prop 2 | `Regime.ontology_relative`, `Regime.ontology_relative_incoherent` | OntologyRelative.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the
