@@ -1,7 +1,7 @@
 # Lean 4 formalization of implication-space semantics for RDF
 
 Formalizes B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026),
-in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All ten files compile with
+in Lean 4 (v4.34.0) against Mathlib commit `5ed2965` (tag `v4.34.0`, Sept 2026). All eleven files compile with
 no `sorry`; the main theorems depend only on `propext`, `Classical.choice`, `Quot.sound`.
 
 Build: `lake exe cache get && lake build`. `lakefile.toml` and `lake-manifest.json` both pin
@@ -94,10 +94,19 @@ lemma names.
 | The same at shape (a): with explosion Cautious Monotony fails; without it Right Weakening from ⊥ fails and Cautious Monotony holds | `NotCumulative.typeBase_not_cumulative`, `NotCumulative.typeBase_explosion_cm_fails`, `NotCumulative.typeBase_no_explosion_rw_fails`, `NotCumulative.typeBase_no_explosion_cm_holds` | NotCumulative.lean |
 | The regime `R_O = R ∪ {⟨∅, t⟩ : t ∈ O}` for an ontology `O` all of whose terms are IRIs, as a regime over `V` and the IRIs of `O`; its closure of `X` is the closure under `R` of `X ∪ O` | `Graph.iris`, `Graph.IriOnly`, `Regime.withOntology`, `Regime.cl_withOntology`, `Regime.clPos_withOntology`, `Regime.inconsistent_withOntology` | OntologyRelative.lean |
 | **Corollary (Ontology-relative regimes)**, for an ontology without literals, from Theorem 2; its counterpart for incoherence, from Prop 2 | `Regime.ontology_relative`, `Regime.ontology_relative_incoherent` | OntologyRelative.lean |
+| The rules (2) to (7) of ρdf (Muñoz, Pérez and Gutierrez 2009, Table 1) as 23 pattern rules, each well-formed; none concludes ⊥ | `RhoDf.Vocab`, `RhoDf.Vocab.In`, `RhoDf.RuleId`, `RhoDf.rule`, `RhoDf.rule_wf`, `RhoDf.rule_concl_ne_none`, `RhoDf.patternRegime_not_inconsistent` | RhoDf.lean |
+| **The ρdf rules form a `Regime`**: rules (2) to (7), and rules (2), (3) and (4) alone; no graph is inconsistent under either | `RhoDf.rhoRegime`, `RhoDf.mrdfRegime`, `RhoDf.rho_not_inconsistent`, `RhoDf.mrdf_not_inconsistent` | RhoDf.lean |
+| **Theorem 2 for the ρdf rules**, and the same with a schema held fixed, by the ontology-relative corollary | `RhoDf.rho_recovery`, `RhoDf.mrdf_recovery`, `RhoDf.rho_ontology_recovery`, `RhoDf.mrdf_ontology_recovery` | RhoDf.lean |
+| Two checks that the transcribed rules fire: rule (3b), and rule (2b) with a variable as predicate | `RhoDf.mrdf_sc_type`, `RhoDf.mrdf_sp_inherit` | RhoDf.lean |
 
 Not formalized: Corollaries 2–3 (RDFS, OWL 2 RL). They are instantiations of Theorem 2
 at concrete rule tables and would require encoding those tables (and, for Cor. 2, the
 appeal to Hayes & Patel-Schneider App. A / ter Horst Thm 4.12, which is external).
+`RhoDf.lean` encodes one such table, that of ρdf. It shows that the rules as transcribed
+form a regime. It does not check the transcription against the paper's table, and it does
+not formalize that paper's theorems relating the rules to RDFS entailment. The paper
+instantiates a rule only where every triple is well formed; the library takes every
+instance over generalized triples.
 
 ## Modelling decisions that differ from the note
 

@@ -8,3 +8,4 @@ import ISRDF.Bridge
 import ISRDF.StandardPatterns
 import ISRDF.NotCumulative
 import ISRDF.OntologyRelative
+import ISRDF.RhoDf
