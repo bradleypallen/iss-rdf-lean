@@ -9,8 +9,10 @@ Two artifacts that must stay in sync:
 * `manuscript.tex` — B. P. Allen, *Implication-Space Semantics for RDF* (draft, 30 September 2026), with `references.bib`.
 * `ISRDF/` — a Lean 4 formalization of that manuscript's numbered Definitions, Lemmas, Theorems, Propositions and Corollaries
   (`Rdf.lean`, `Semantics.lean`), plus a nonmonotone extension
-  (`General.lean`, `Entries.lean`, `Examples.lean`, `Patterns.lean`) and a module that
-  joins the two proof chains (`Bridge.lean`).
+  (`General.lean`, `Entries.lean`, `Examples.lean`, `Patterns.lean`), a module that
+  joins the two proof chains (`Bridge.lean`), and six modules that apply the library
+  (`StandardPatterns.lean`, `NotCumulative.lean`, `OntologyRelative.lean`, `RhoDf.lean`,
+  `RhoDfWellFormed.lean`, `CaseRegimeRhoDf.lean`).
 
 Every Lean declaration is docstring-tagged with the manuscript item it formalizes
 (`/-- Definition 5: ... -/`, `/-- **Theorem 1 (Recovery).** ... -/`). `README.md` holds the
@@ -32,7 +34,7 @@ and `latexmk -pdf manuscript.tex` to reproduce them.
 
 ```sh
 lake exe cache get          # fetch prebuilt Mathlib oleans (do this before the first build)
-lake build                  # build all seven modules
+lake build                  # build all thirteen modules
 lake build ISRDF.Semantics  # build a single module
 lake env lean ISRDF/Rdf.lean   # type-check one file directly, full error output
 ```
@@ -55,7 +57,10 @@ The main theorems (`recovery`, `witness_characterization`, `incoherence_recovery
 `ConsBase.incoherent_iff_inc`, `Regime.entries_general`, `Regime.defeat_witness`,
 `Regime.incoherence_witness`, `Regime.consBaseOf_cons_union`, and in `Bridge.lean`
 `ConsBase.general_with`, `ConsBase.InstMonotone.fitEnt_iff_skolem`,
-`closure_regimes_of_general`, `incoherence_recovery_of_general`) must depend only on
+`closure_regimes_of_general`, `incoherence_recovery_of_general`, and in the applications
+`Regime.ontology_relative`, `RhoDf.rho_recovery`, `RhoDf.rho_recovery_wellFormed`,
+`RhoDf.caseRegime_rules`, `RhoDf.cl_rho_iff_cl_case`, `NotCumulative.not_cumulative`,
+`StandardPatterns.dmp`, `StandardPatterns.persists`) must depend only on
 `propext, Classical.choice, Quot.sound`. `Classical.choice` enters through Mathlib's set
 lemmas (`recovery` and `Model.positional` depend on it without using Skolemization) as well
 as through `skolemInv` (Lemma 5), which is `noncomputable` by construction.
@@ -75,13 +80,15 @@ grep -ac 'Overfull \\hbox' manuscript.log          # cosmetic; a few are expecte
 
 ## Architecture
 
-`ISRDF.lean` is a bare re-export of seven modules. The manuscript's content is two of them,
-layered; the nonmonotone extension (below) is four more on top; `Bridge.lean` (last
-subsection) joins the two proof chains:
+`ISRDF.lean` is a bare re-export of thirteen modules. The manuscript's content is two of
+them, layered; the nonmonotone extension (below) is four more on top; `Bridge.lean` joins
+the two proof chains; and six modules (last subsection) apply the library to named systems
+and examples:
 
 **`ISRDF/Rdf.lean` (§2) — syntax and entailment regimes.** `Term`/`Triple`/`Graph` over three
 abstract carrier types `Iri Lit Bn` (every result is parametric in them; the only
-instantiation anywhere is the closed example `Examples.E0_instance_nat`).
+instantiations anywhere are closed examples: `Examples.E0_instance_nat`, and Part C of
+`StandardPatterns.lean`, which takes `Iri := ℕ`).
 `Graph` is `Set (Triple (Term ..))`. Instance mappings are *total* `Bn → Term`, applied via
 `Graph.inst`; `Graph.mapT` is the more general pointwise map used for regime uniformity.
 `Regime` bundles a rule set with its range-restriction and uniformity proofs as structure
@@ -226,6 +233,100 @@ Structural points for the bridge:
     `Semantics.lean` are not replaced by the re-derived versions; the two sets of proofs
     are kept side by side, and each new statement is definitionally the old one.
 
+### Applications
+
+Six modules that add no machinery to the core: each takes the library as it stands and
+checks a named system or claim against it. All add declarations only. They do not form a
+chain; the imports are:
+
+```
+OntologyRelative  ← Semantics
+StandardPatterns  ← Patterns
+NotCumulative     ← Patterns, Bridge
+RhoDf             ← Patterns, OntologyRelative
+RhoDfWellFormed   ← RhoDf
+CaseRegimeRhoDf   ← RhoDf
+```
+
+**`ISRDF/OntologyRelative.lean` — a regime with an ontology held fixed.**
+`Regime.withOntology` is `R_O = R ∪ {⟨∅, t⟩ | t ∈ O}` for a graph `O` all of whose terms are
+IRIs (`Graph.IriOnly`), as a `Regime` over `V ∪ O.iris`. `clPos_withOntology` and
+`inconsistent_withOntology` are the closure equation `cl_{R_O}(X) = cl_R(X ∪ O)`;
+`Regime.ontology_relative` is the corollary of Theorem 2 and
+`ontology_relative_incoherent` its counterpart from Proposition 2. Its declarations are in
+the namespaces `ISRDF` and `ISRDF.Regime`; the file has no namespace of its own.
+
+**`ISRDF/StandardPatterns.lean` — the standard patterns of nonmonotonic reasoning**, in
+the namespace `ISRDF.StandardPatterns`; the patterns are those of Pelletier and Asher
+(1997), section 3.1. Part A holds for every regime and every set of entries: defeasible
+modus ponens (`dmp`), a default conclusion is withdrawn only by a listed defeater
+(`persists`), and `Cons` is closed under the regime (`cons_closed`, `cons_rule`). Part B is
+a family of entry sets over the empty regime: `Spec` is a set of class defaults
+(`x type A` gives `x type B` unless `x type T` for a listed `T`) and clashes, built with
+`patternEntries`; `mem_cons_iff` and `inc_iff` compute `Cons` and incoherence for it.
+Part C works each pattern as a closed instance with IRIs in `ℕ` (`c1_dmp` through
+`c7_charlie_incoherent`: defeat, the Nixon diamond, no chaining, the Penguin Principle with
+and without a listed defeater, independence).
+
+**`ISRDF/NotCumulative.lean` — lost incoherence against cumulative relations**, in the
+namespace `ISRDF.NotCumulative`. Part A is the derivation, with no logic in it
+(`bot_persists`), and its two instances: for formulas (`klm_false_persists`, the lemma of
+Kraus, Lehmann and Magidor) and for set relations (`incoherence_persists`, with `RWBot`
+and `CautiousMono` defined locally). Part B applies it to `ConsBase.baseWith e`:
+`not_cumulative` says a base with lost incoherence does not have both rules;
+`explosion_cm_fails` and `no_explosion_dichotomy` say which fails with explosion and which
+without. Part C is the library's own example, `Shapes.typeBase`.
+
+**`ISRDF/RhoDf.lean` — the ρdf rules as a regime**, in the namespace `ISRDF.RhoDf`.
+`Vocab` is the five keywords (`sp`, `sc`, `type`, `dom`, `range`) as IRIs. `RuleId` names
+23 Horn rules transcribing rules (2) to (7) of Muñoz, Pérez and Gutierrez (2009), Table 1;
+`rule` gives each as a `PRule` and `rule_wf` its well-formedness. `rhoRegime` is all of
+them and `mrdfRegime` rules (2), (3) and (4) only, both by `patternRegime`. `rho_recovery`
+and `mrdf_recovery` are Theorem 2 for them; `rho_ontology_recovery` and
+`mrdf_ontology_recovery` add a fixed schema through `OntologyRelative.lean`.
+
+**`ISRDF/RhoDfWellFormed.lean` — generalized instances against the paper's instances.**
+The ρdf paper instantiates a rule only where every triple has a URI as predicate;
+`rhoRegime` takes every instance. `WCl` is the closure under the paper's instances.
+`wcl_of_mem_clPos` and `mem_clPos_of_wcl` show the two closures have the same triples with
+an IRI as predicate, on a graph whose predicates are IRIs (`IriPred`);
+`simpleEntails_clPos_iff_wcl` and `rho_recovery_wellFormed` restate Theorem 2 with the
+paper's closure.
+
+**`ISRDF/CaseRegimeRhoDf.lean` — the case study's regime against rules (3a) and (3b).**
+`caseRegime_rules`: with `ins` as `type` and `sub` as `sc`, the rules of
+`Shapes.caseRegime` are exactly the ground instances of `RhoDf.rule` at `r3a` and `r3b`.
+`cl_rho_of_cl_case` is the inclusion of closures; `cl_rho_iff_cl_case` is the converse on a
+graph with no `sp`, `dom` or `range` predicate (`NoSchemaPred`), up to triples `a sp a` and
+`a sc a`.
+
+Structural points for the applications:
+
+12. **A regime's `V` is a set of IRIs, so an ontology has no literals.** A rule `⟨∅, t⟩`
+    passes range restriction only if every term of `t` is an IRI in the vocabulary. Hence
+    `Graph.IriOnly`, and hence `withOntology` is a regime over the larger vocabulary
+    `V ∪ O.iris`: admissibility in `ontology_relative` is for that vocabulary, not for `V`.
+13. **The ρdf transcription is not checked against the paper.** What is proved is that the
+    rules as written in `RhoDf.rule` form a regime, and what follows. That the table is
+    transcribed correctly, and the paper's own theorems relating the rules to RDFS
+    entailment, are cited and not formalized. Three deliberate differences from the table
+    are listed in the header of `RhoDf.lean` (two-conclusion rules split, keyword schemas
+    expanded, generalized instances). Do not edit `rule` without rechecking all three
+    `RhoDf` files: `RhoDfWellFormed.lean` and `CaseRegimeRhoDf.lean` unfold it by `simp`.
+14. **`WCl` is an inductive closure, not a `Regime`.** `Regime.uniform` closes a rule set
+    under every map fixing `L ∪ V`, and such a map can send an IRI predicate to a blank
+    node, so the instances with IRI predicates only are not closed under it. (This is the
+    reason for the design, not a statement proved in Lean.) Do not try to restrict
+    `rhoRegime` to them; the comparison in `RhoDfWellFormed.lean` is the substitute, and
+    it needs the hypothesis that the graph's predicates are IRIs.
+15. **The comparison with the case study needs two hypotheses and holds up to reflexive
+    triples.** `cl_rho_iff_cl_case` assumes the five keywords are distinct
+    (`Function.Injective voc.kw`) and `NoSchemaPred`, and the full rule set still adds
+    `a sp a` and `a sc a`. Neither hypothesis is checked for the case study's actual graph.
+16. **`RWBot` and `CautiousMono` are stated for relations on sets of sentences**, with `⊥`
+    as the empty succedent, and are local to `NotCumulative.lean`. They are not the base's
+    own structural properties in `Semantics.lean` (`Regime.base_mono_left`, `base_cut`).
+
 ## Conventions in the Lean sources
 
 * `set_option autoImplicit false` at the top of every file — declare every variable.
@@ -242,7 +343,14 @@ Structural points for the bridge:
 Corollaries 2–3 of the manuscript (RDFS, OWL 2 RL) are **not** formalized. They are
 instantiations of Theorem 2 at concrete rule tables; formalizing them means encoding those
 tables, and for Cor. 2 also depends on an external completeness result
-(Hayes & Patel-Schneider App. A / ter Horst Thm 4.12).
+(Hayes & Patel-Schneider App. A / ter Horst Thm 4.12). `RhoDf.lean` encodes one such
+table, that of ρdf, and proves Theorem 2 at it; it does not check the transcription against
+the paper or formalize the paper's theorems relating the rules to RDFS entailment
+(structural point 13), so Corollary 2 itself remains unformalized.
+
+In the applications, not formalized: an ontology containing literals (structural point
+12); and whether the graph of the case study satisfies the hypotheses of
+`cl_rho_iff_cl_case`.
 
 In the nonmonotone extension, not formalized:
 
